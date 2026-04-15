@@ -1,0 +1,7 @@
+# Generator script and docs — not shipped
+generate.py
+SETUP.md
+__pycache__/
+
+# Claude Code local config
+.claude/
