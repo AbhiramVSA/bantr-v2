@@ -33,9 +33,9 @@ AsyncSessionLocal = async_sessionmaker(
 
 
 async def _register_vector(conn):
-    from pgvector.asyncpg import register_vector_async
+    from pgvector.asyncpg import register_vector
 
-    await register_vector_async(conn)
+    await register_vector(conn)
 
 
 @event.listens_for(engine.sync_engine, "connect")
