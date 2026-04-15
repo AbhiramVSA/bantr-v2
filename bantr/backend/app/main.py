@@ -237,3 +237,48 @@ async def readiness(db: AsyncSession = Depends(get_db)):
             status_code=503,
             content={"status": "not_ready", "checks": {"database": "failed"}},
         )
+
+
+@app.get("/health/integrations")
+async def integration_readiness():
+    checks: dict[str, str] = {}
+
+    checks["livekit_env"] = (
+        "ok"
+        if settings.LIVEKIT_URL and settings.LIVEKIT_API_KEY and settings.LIVEKIT_API_SECRET
+        else "missing_config"
+    )
+    checks["openai_env"] = "ok" if settings.OPENAI_API_KEY else "missing_config"
+
+    try:
+        from livekit.api import LiveKitAPI
+
+        api = LiveKitAPI(
+            url=settings.LIVEKIT_URL,
+            api_key=settings.LIVEKIT_API_KEY,
+            api_secret=settings.LIVEKIT_API_SECRET,
+        )
+        await api.aclose()
+        checks["livekit_client"] = "ok"
+    except Exception:
+        checks["livekit_client"] = "failed"
+
+    try:
+        from openai import AsyncOpenAI
+
+        _client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        checks["openai_client"] = "ok"
+    except Exception:
+        checks["openai_client"] = "failed"
+
+    healthy = all(
+        value == "ok"
+        for key, value in checks.items()
+        if key in {"livekit_env", "openai_env", "livekit_client", "openai_client"}
+    )
+    if not healthy:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", "checks": checks},
+        )
+    return {"status": "ready", "checks": checks}

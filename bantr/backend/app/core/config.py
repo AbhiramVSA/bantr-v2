@@ -43,6 +43,16 @@ class Settings(BaseSettings):
     MAX_REQUEST_BODY_SIZE: int = 1_048_576
     AUTH_RATE_LIMIT: str = "5/minute"
 
+    # LiveKit
+    LIVEKIT_URL: str = ""
+    LIVEKIT_API_KEY: str = ""
+    LIVEKIT_API_SECRET: str = ""
+
+    # OpenAI (analysis + embeddings + chat)
+    OPENAI_API_KEY: str = ""
+    OPENAI_CHAT_MODEL: str = "gpt-4.1-mini"
+    OPENAI_EMBED_MODEL: str = "text-embedding-3-small"
+
     @property
     def allowed_origins_list(self) -> list[str]:
         return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]

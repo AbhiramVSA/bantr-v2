@@ -19,6 +19,15 @@ dependencies = [
     "passlib[bcrypt]>=1.7.4",
     "logfire[fastapi,asyncpg]>=4.0.0",
     "slowapi>=0.1.9",
+    "livekit-agents>=1.0.0",
+    "livekit-plugins-deepgram>=1.0.0",
+    "livekit-plugins-openai>=1.0.0",
+    "livekit-plugins-elevenlabs>=1.0.0",
+    "livekit-plugins-silero>=1.0.0",
+    "livekit-api>=1.0.0",
+    "pgvector>=0.4.0",
+    "openai>=1.60.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [tool.uv]
