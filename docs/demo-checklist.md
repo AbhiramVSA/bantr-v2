@@ -36,3 +36,18 @@
 5. Analyze debate and verify structured result.
 6. Send chat message and verify contextual response.
 7. Verify chat history endpoint returns saved messages.
+
+## Automated Smoke Test
+
+Run:
+
+- `cd bantr/backend`
+- `uv run python scripts/demo_smoke_test.py`
+
+Optional variables:
+
+- `DEMO_API_ROOT` (default: `http://localhost:8000`)
+- `DEMO_USER_EMAIL`
+- `DEMO_USER_USERNAME`
+- `DEMO_USER_PASSWORD`
+- `DEMO_AGENT_VOICE_ID`
