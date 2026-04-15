@@ -20,9 +20,21 @@ LiveKit AgentServer   ───────────┘
 
 - **FastAPI** handles all HTTP endpoints: debate CRUD, triggering analysis, the chatbot, LiveKit token generation.
 - **LiveKit AgentServer** (`agent_worker.py`) is a standalone Python process that connects to LiveKit Cloud and receives job dispatches. When a user starts a debate, LiveKit Cloud routes the agent into the room. The agent reads its prompt from room metadata.
-- **Neon Postgres** with pgvector stores all application data including transcript embeddings.
+- **Neon Postgres** with pgvector stores all application data including transcript embeddings. Neon supports pgvector natively — `CREATE EXTENSION IF NOT EXISTS vector` runs in the Alembic migration.
 
 Both processes share the same `.env` and database.
+
+### pgvector + asyncpg Registration
+
+asyncpg does not natively understand the `VECTOR` type. The `pgvector` Python package provides `register_vector_async()` which must be called on each new connection. This is wired up via a SQLAlchemy connection pool event in `db/session.py`:
+
+```python
+from pgvector.asyncpg import register_vector_async
+
+@event.listens_for(engine.sync_engine, "connect")
+def connect(dbapi_connection, connection_record):
+    dbapi_connection.run_async(register_vector_async)
+```
 
 ## Tech Stack
 
@@ -40,41 +52,54 @@ Both processes share the same `.env` and database.
 | WebRTC transport | LiveKit Cloud |
 | Database | Neon Postgres (existing) |
 
+Note: LiveKit Inference model strings (`deepgram/nova-3:multi`, `openai/gpt-4.1-mini`, `elevenlabs/...`) must be validated against the actual LiveKit Agents SDK version at implementation time. The SDK API has changed significantly across versions.
+
 ## Data Models
 
 All models inherit from the existing `Base` class (UUID PK, `created_at`, `updated_at` with `DateTime(timezone=True)`).
+
+JSONB columns store raw Python dicts/lists. Pydantic validation happens at the schema layer (request/response), not the model layer. The ORM reads/writes plain dicts to JSONB columns.
 
 ### Debate
 
 ```
 debates
 ├── id              UUID PK
-├── user_id         FK → users.id, NOT NULL
+├── user_id         FK → users.id, NOT NULL, ondelete=CASCADE
 ├── title           VARCHAR(200), NOT NULL
 ├── topic           TEXT, NOT NULL (the debate question)
 ├── agent_prompt    TEXT, NOT NULL (full system prompt for the AI agent)
 ├── agent_voice_id  VARCHAR(100), NOT NULL (ElevenLabs voice ID)
 ├── status          VARCHAR(20), NOT NULL, default "pending"
-│                   enum: pending → active → completed → failed
-├── livekit_room_name  VARCHAR(100), UNIQUE, NOT NULL
+│                   enum: pending → active → ending → completed → failed
+├── livekit_room_name  VARCHAR(100), UNIQUE, NOT NULL (generated at creation time)
 ├── started_at      TIMESTAMPTZ, nullable
 ├── ended_at        TIMESTAMPTZ, nullable
 ├── created_at      TIMESTAMPTZ (from Base)
 ├── updated_at      TIMESTAMPTZ (from Base)
 ```
 
+`livekit_room_name` is generated server-side at `POST /debates` creation time as `f"debate-{debate.id}"`. Always populated; never user-supplied.
+
 Status transitions:
 - `pending` — debate created, room not yet started
 - `active` — LiveKit room created, user and agent are in the room
-- `completed` — debate ended, transcript saved
+- `ending` — `/end` called, room deleted, waiting for agent worker to save transcript
+- `completed` — agent worker saved transcript successfully
 - `failed` — something went wrong (room creation failed, agent crashed, etc.)
+
+Status ownership:
+- **FastAPI** owns: `pending → active`, `active → ending`, `* → failed`
+- **Agent worker** owns: `ending → completed` (after saving transcript)
+
+This eliminates the race condition: `/end` never sets `completed` directly.
 
 ### Transcript
 
 ```
 transcripts
 ├── id                UUID PK
-├── debate_id         FK → debates.id, UNIQUE, NOT NULL
+├── debate_id         FK → debates.id, UNIQUE, NOT NULL, ondelete=CASCADE
 ├── full_text         TEXT, NOT NULL (complete transcript as plain text)
 ├── speaker_segments  JSONB, NOT NULL
 │                     Array of: {speaker: "user"|"agent", text: str, start_time: float, end_time: float}
@@ -89,7 +114,7 @@ One transcript per debate (1:1 relationship enforced by UNIQUE on debate_id).
 ```
 debate_analyses
 ├── id                  UUID PK
-├── debate_id           FK → debates.id, UNIQUE, NOT NULL
+├── debate_id           FK → debates.id, UNIQUE, NOT NULL, ondelete=CASCADE
 ├── argument_strength   JSONB, NOT NULL
 │                       {user_score: int 1-10, agent_score: int 1-10, reasoning: str}
 ├── logical_fallacies   JSONB, NOT NULL
@@ -113,8 +138,8 @@ One analysis per debate (1:1).
 ```
 debate_embeddings
 ├── id            UUID PK
-├── debate_id     FK → debates.id, NOT NULL
-├── user_id       FK → users.id, NOT NULL (denormalized for efficient vector search filtering)
+├── debate_id     FK → debates.id, NOT NULL, ondelete=CASCADE
+├── user_id       FK → users.id, NOT NULL, ondelete=CASCADE (denormalized for vector search filtering)
 ├── chunk_index   INTEGER, NOT NULL (ordering within transcript)
 ├── chunk_text    TEXT, NOT NULL
 ├── embedding     VECTOR(1536), NOT NULL (OpenAI text-embedding-3-small dimension)
@@ -123,7 +148,7 @@ debate_embeddings
 ├── updated_at    TIMESTAMPTZ
 ```
 
-Index: `ivfflat` on `embedding` column with `vector_cosine_ops` for similarity search. Many embeddings per debate (1:N).
+Index: **HNSW** on `embedding` column with `vector_cosine_ops` for similarity search. HNSW is used instead of IVFFlat because it works correctly on empty tables and does not require rebuilding after data loads. Many embeddings per debate (1:N).
 
 `user_id` is denormalized from `debates.user_id` so the chatbot can filter embeddings by user without joining through debates.
 
@@ -132,19 +157,23 @@ Index: `ivfflat` on `embedding` column with `vector_cosine_ops` for similarity s
 ```
 chat_messages
 ├── id                  UUID PK
-├── user_id             FK → users.id, NOT NULL
+├── user_id             FK → users.id, NOT NULL, ondelete=CASCADE
 ├── role                VARCHAR(10), NOT NULL ("user" | "assistant")
 ├── content             TEXT, NOT NULL
-├── context_debate_ids  JSONB, nullable (array of debate UUIDs that were referenced)
+├── context_debate_ids  JSONB, nullable (array of debate UUID strings that were referenced)
 ├── created_at          TIMESTAMPTZ
 ├── updated_at          TIMESTAMPTZ
 ```
 
 Index on `(user_id, created_at)` for paginated history queries.
 
+`context_debate_ids` is a JSONB array, not a real FK. If a debate is deleted, stale UUIDs may remain. The chat history endpoint tolerates missing debates gracefully when resolving these IDs (filters them out rather than erroring).
+
 ## API Endpoints
 
 All under `/api/v1`. Existing auth endpoints unchanged. All new endpoints require authentication (access_token cookie). Debates and chat endpoints are scoped to the authenticated user.
+
+New routers are registered with `dependencies=[Depends(validate_csrf)]` matching the existing users router pattern — all state-changing endpoints (POST/DELETE) are CSRF-protected.
 
 ### Debates
 
@@ -155,7 +184,7 @@ All under `/api/v1`. Existing auth endpoints unchanged. All new endpoints requir
 | GET | `/debates/{id}` | Get debate details |
 | POST | `/debates/{id}/start` | Start debate (creates LiveKit room, returns join token) |
 | POST | `/debates/{id}/end` | End debate (closes room, triggers transcript save) |
-| DELETE | `/debates/{id}` | Delete debate and all related data (transcript, analysis, embeddings) |
+| DELETE | `/debates/{id}` | Delete debate and all related data (cascade) |
 
 #### POST /debates
 
@@ -169,7 +198,7 @@ Request:
 }
 ```
 
-Response: `201` with the full debate object (status: `pending`).
+Response: `201` with the full debate object (status: `pending`, `livekit_room_name` auto-generated).
 
 #### POST /debates/{id}/start
 
@@ -195,16 +224,20 @@ Precondition: status must be `active`.
 
 Actions:
 1. Delete the LiveKit room (disconnects all participants)
-2. Update status to `completed`, set `ended_at`
+2. Update status to `ending`, set `ended_at`
 
-The agent worker handles transcript saving on disconnect (see Agent Worker section). If the agent worker fails to save the transcript, the status remains `completed` but the transcript endpoint returns 404.
+The agent worker saves the transcript on disconnect and transitions status from `ending` to `completed`.
 
 Response:
 ```json
 {
-  "status": "completed"
+  "status": "ending"
 }
 ```
+
+#### DELETE /debates/{id}
+
+All related data (transcript, analysis, embeddings) is deleted via `ondelete=CASCADE` on the foreign keys. No explicit child deletion needed in the service layer.
 
 ### Transcripts & Analysis
 
@@ -218,7 +251,7 @@ Response:
 
 Precondition: debate status is `completed` and transcript exists. Returns 409 if analysis already exists.
 
-Actions (run sequentially — PoC, no background workers):
+Actions (wrapped in a single DB transaction — rolled back on any failure):
 1. Load transcript from DB
 2. Call OpenAI with structured output prompt, parse into DebateAnalysis fields
 3. Store analysis record
@@ -235,7 +268,7 @@ This endpoint will take 10-30 seconds depending on transcript length. For PoC th
 | Method | Path | Description |
 |---|---|---|
 | POST | `/chat` | Send a message, get a response |
-| GET | `/chat/history` | Get chat history (paginated) |
+| GET | `/chat/history` | Get chat history (paginated: `skip`/`limit`, default limit=50) |
 | DELETE | `/chat/history` | Clear all chat history |
 
 #### POST /chat
@@ -263,12 +296,19 @@ Actions:
 Response:
 ```json
 {
-  "response": "In your debate about AI teachers, your strongest argument was...",
+  "message": {
+    "id": "...",
+    "role": "assistant",
+    "content": "In your debate about AI teachers, your strongest argument was...",
+    "created_at": "..."
+  },
   "context_debates": [
     {"id": "...", "title": "Should AI replace teachers?"}
   ]
 }
 ```
+
+`context_debates` contains `ChatContextDebate` schema objects (id + title). Missing debates (deleted after embedding) are silently filtered out.
 
 ### LiveKit Token
 
@@ -301,6 +341,22 @@ Response:
 
 Located at `backend/agent_worker.py`. A standalone process using the LiveKit Agents SDK.
 
+### Database Access
+
+The agent worker runs outside FastAPI's request lifecycle. It cannot use `Depends(get_db)`. Instead, it imports `AsyncSessionLocal` directly from `app.db.session` and manages sessions manually:
+
+```python
+from app.db.session import AsyncSessionLocal
+
+async with AsyncSessionLocal() as session:
+    try:
+        # ... create transcript, update debate status ...
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
+```
+
 ### Startup
 
 ```python
@@ -317,7 +373,7 @@ async def debate_session(ctx: JobContext):
     session = AgentSession(
         stt="deepgram/nova-3:multi",
         llm="openai/gpt-4.1-mini",
-        tts=f"elevenlabs/{voice_id}",  # voice_id is the ElevenLabs voice ID; exact inference model string TBD from LiveKit docs at implementation time
+        tts=f"elevenlabs/{voice_id}",  # exact inference model string validated at implementation time
         vad=silero.VAD.load(),
     )
 
@@ -334,9 +390,10 @@ async def debate_session(ctx: JobContext):
 When the session ends (user disconnects or room is deleted), the agent worker:
 
 1. Collects the conversation transcript from the `AgentSession` (LiveKit SDK provides this)
-2. Connects to the database directly using the shared `ASYNC_DATABASE_URI`
+2. Opens a DB session via `AsyncSessionLocal` (manual commit/rollback)
 3. Creates a `Transcript` record with `full_text` and `speaker_segments`
-4. Updates the debate status to `completed` if not already
+4. Updates debate status from `ending` to `completed`
+5. If any step fails, sets debate status to `failed`
 
 ### Running
 
@@ -429,12 +486,13 @@ backend/
 ## Migration
 
 One Alembic migration to add:
+- `CREATE EXTENSION IF NOT EXISTS vector` (pgvector)
 - `debates` table
 - `transcripts` table
 - `debate_analyses` table
-- `debate_embeddings` table with pgvector extension (`CREATE EXTENSION IF NOT EXISTS vector`)
+- `debate_embeddings` table with HNSW index on `embedding` column
 - `chat_messages` table
-- Relevant indexes including the ivfflat index on the embedding column
+- Composite index on `(user_id, created_at)` for chat_messages
 
 ## Error Handling
 
@@ -445,8 +503,8 @@ One Alembic migration to add:
 - Requesting analysis when one already exists → 409 Conflict
 - Accessing another user's debate → 404 (not 403, to avoid leaking existence)
 - LiveKit room creation failure → set debate status to `failed`, return 502
-- OpenAI API failure during analysis → return 502, don't store partial results
-- Agent worker crash mid-debate → debate stays `active`; user must call `/end` manually which cleans up
+- OpenAI API failure during analysis → return 502, roll back entire transaction (no partial results)
+- Agent worker crash mid-debate → debate stays `active`; user calls `/end` which sets `ending`; agent worker never transitions to `completed`; debate can be manually set to `failed`
 
 ## Out of Scope
 
