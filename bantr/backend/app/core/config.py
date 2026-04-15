@@ -9,7 +9,6 @@ class Settings(BaseSettings):
         env_file=("../.env", ".env"),
         env_file_encoding="utf-8",
         case_sensitive=True,
-        extra="ignore",
     )
 
     MODE: Literal["development", "production", "testing"] = "development"
@@ -53,6 +52,10 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_CHAT_MODEL: str = "gpt-4.1-mini"
     OPENAI_EMBED_MODEL: str = "text-embedding-3-small"
+
+    # Optional provider keys that may exist in shared env files.
+    ELEVENLABS_API_KEY: str = ""
+    DEEPGRAM_API_KEY: str = ""
 
     @property
     def allowed_origins_list(self) -> list[str]:

@@ -25,6 +25,10 @@ async def debate_session(ctx: JobContext):
     debate_config = await _load_debate_config(debate_id)
     if not debate_config:
         logger.error("Unable to load debate config for %s", debate_id)
+        try:
+            await _mark_debate_terminal(uuid.UUID(debate_id), status="failed")
+        except ValueError:
+            pass
         return
 
     logger.info("Starting debate session for debate_id=%s", debate_id)
@@ -115,6 +119,7 @@ async def _save_transcript(debate_id: str, session: AgentSession):
 
     if not segments:
         logger.warning("No transcript segments found for debate %s", debate_id)
+        await _mark_debate_terminal(did, status="failed")
         return
 
     full_text = "\n".join(full_parts)
@@ -137,7 +142,7 @@ async def _save_transcript(debate_id: str, session: AgentSession):
             else:
                 logger.info("Transcript already exists for debate %s", debate_id)
 
-            if debate.status == "ending":
+            if debate.status in {"active", "ending"}:
                 debate.status = "completed"
             await db.flush()
             await db.commit()
@@ -145,14 +150,27 @@ async def _save_transcript(debate_id: str, session: AgentSession):
         except Exception:
             await db.rollback()
             logger.exception("Failed to persist transcript for debate %s", debate_id)
-            try:
-                debate = await get_debate_by_id(db, did)
-                if debate and debate.status == "ending":
-                    debate.status = "failed"
-                    await db.flush()
-                    await db.commit()
-            except Exception:
-                logger.exception("Failed to mark debate %s as failed", debate_id)
+            await _mark_debate_terminal(did, status="failed")
+
+
+async def _mark_debate_terminal(debate_id: uuid.UUID, status: str) -> None:
+    from app.crud.debate import get_debate_by_id
+    from app.db.session import AsyncSessionLocal
+
+    try:
+        async with AsyncSessionLocal() as db:
+            debate = await get_debate_by_id(db, debate_id)
+            if not debate:
+                return
+            if debate.status in {"completed", "failed"}:
+                return
+            debate.status = status
+            await db.flush()
+            await db.commit()
+    except Exception:
+        logger.exception(
+            "Failed to set terminal status '%s' for debate %s", status, debate_id
+        )
 
 
 if __name__ == "__main__":

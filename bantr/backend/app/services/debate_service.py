@@ -94,6 +94,12 @@ async def end_debate(db: AsyncSession, debate: Debate) -> None:
             "INVALID_STATUS", f"Debate is '{debate.status}', expected 'active'"
         )
 
+    # Transition first to avoid a race where worker persists transcript before
+    # status is updated, leaving debates stuck in "ending".
+    debate.status = "ending"
+    debate.ended_at = datetime.now(timezone.utc)
+    await db.flush()
+
     api = LiveKitAPI(
         url=settings.LIVEKIT_URL,
         api_key=settings.LIVEKIT_API_KEY,
@@ -120,10 +126,6 @@ async def end_debate(db: AsyncSession, debate: Debate) -> None:
         ) from exc
     finally:
         await api.aclose()
-
-    debate.status = "ending"
-    debate.ended_at = datetime.now(timezone.utc)
-    await db.flush()
 
 
 def generate_join_token(room_name: str, user_id: str) -> str:

@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Request
@@ -250,26 +251,43 @@ async def integration_readiness():
     )
     checks["openai_env"] = "ok" if settings.OPENAI_API_KEY else "missing_config"
 
-    try:
-        from livekit.api import LiveKitAPI
+    if checks["livekit_env"] == "ok":
+        api = None
+        try:
+            from livekit.api import LiveKitAPI, ListRoomsRequest
 
-        api = LiveKitAPI(
-            url=settings.LIVEKIT_URL,
-            api_key=settings.LIVEKIT_API_KEY,
-            api_secret=settings.LIVEKIT_API_SECRET,
-        )
-        await api.aclose()
-        checks["livekit_client"] = "ok"
-    except Exception:
-        checks["livekit_client"] = "failed"
+            api = LiveKitAPI(
+                url=settings.LIVEKIT_URL,
+                api_key=settings.LIVEKIT_API_KEY,
+                api_secret=settings.LIVEKIT_API_SECRET,
+            )
+            await asyncio.wait_for(
+                api.room.list_rooms(ListRoomsRequest()),
+                timeout=10,
+            )
+            checks["livekit_client"] = "ok"
+        except Exception:
+            checks["livekit_client"] = "failed"
+        finally:
+            try:
+                if api is not None:
+                    await api.aclose()
+            except Exception:
+                pass
+    else:
+        checks["livekit_client"] = "skipped"
 
-    try:
-        from openai import AsyncOpenAI
+    if checks["openai_env"] == "ok":
+        try:
+            from openai import AsyncOpenAI
 
-        _client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-        checks["openai_client"] = "ok"
-    except Exception:
-        checks["openai_client"] = "failed"
+            client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+            await asyncio.wait_for(client.models.list(), timeout=10)
+            checks["openai_client"] = "ok"
+        except Exception:
+            checks["openai_client"] = "failed"
+    else:
+        checks["openai_client"] = "skipped"
 
     healthy = all(
         value == "ok"
