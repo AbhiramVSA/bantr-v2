@@ -4,12 +4,13 @@ import hmac
 import secrets
 from datetime import datetime, timedelta, timezone
 
+import bcrypt
 import jwt
 from passlib.context import CryptContext
 
 from app.core.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 
 def create_access_token(user_id: str, role_name: str, permissions: list[str]) -> str:
@@ -56,7 +57,15 @@ async def hash_password_async(password: str) -> str:
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        if hashed_password.startswith("$2"):
+            return bcrypt.checkpw(
+                plain_password.encode("utf-8"),
+                hashed_password.encode("utf-8"),
+            )
+        return pwd_context.verify(plain_password, hashed_password)
+    except (TypeError, ValueError):
+        return False
 
 
 async def verify_password_async(plain_password: str, hashed_password: str) -> bool:
