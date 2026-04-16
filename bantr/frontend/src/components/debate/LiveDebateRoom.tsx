@@ -18,6 +18,7 @@ type Props = {
   isEnding: boolean;
   onLeave: () => void;
   onEnd: () => void;
+  onDisconnected?: () => void;
   onError?: (error: Error) => void;
 };
 
@@ -77,9 +78,16 @@ function DebateRoomStage({
   const agentTone: StatusPillProps["tone"] =
     agentState === "failed"
       ? "danger"
-      : agent
+      : audioTrack
         ? "secondary"
-        : "muted";
+        : agent
+          ? "primary"
+          : "muted";
+  const agentLabel = audioTrack
+    ? `Agent ${agentState}`
+    : agent
+      ? "Agent warming up"
+      : "Agent not connected";
 
   const recentLines = agentTranscriptions
     .map((segment) => segment.text.trim())
@@ -158,11 +166,16 @@ function DebateRoomStage({
                   </h2>
                   <p className="mt-2 text-sm leading-relaxed text-on-primary/80">
                     {agent
-                      ? "The agent is in the room and ready to debate."
+                      ? audioTrack
+                        ? "The agent is in the room and ready to debate."
+                        : "The agent joined the room and is still preparing voice output."
                       : "The worker has been dispatched. This room will update as soon as the agent publishes presence."}
                   </p>
                 </div>
-                <StatusPill label={agent ? "In room" : "Pending"} tone={agent ? "secondary" : "muted"} />
+                <StatusPill
+                  label={audioTrack ? "Voice live" : agent ? "Warming up" : "Pending"}
+                  tone={audioTrack ? "secondary" : agent ? "primary" : "muted"}
+                />
               </div>
               <div className="mt-6 flex h-28 items-end justify-center rounded-[1.5rem] bg-white/10 px-4 py-5">
                 {audioTrack ? (
@@ -203,7 +216,7 @@ function DebateRoomStage({
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">Agent transcript stream</p>
             <h2 className="mt-2 text-2xl font-headline font-extrabold text-on-background">Live responses</h2>
           </div>
-          <StatusPill label={`Agent ${agentState}`} tone={agentTone} />
+          <StatusPill label={agentLabel} tone={agentTone} />
         </div>
         <div className="mt-6 space-y-3">
           {recentLines.length ? (
@@ -233,6 +246,7 @@ export function LiveDebateRoom({
   isEnding,
   onLeave,
   onEnd,
+  onDisconnected,
   onError,
 }: Props) {
   if (!token || !url) {
@@ -254,6 +268,7 @@ export function LiveDebateRoom({
       connect
       audio
       video={false}
+      onDisconnected={onDisconnected}
       onError={onError}
       className="block"
     >

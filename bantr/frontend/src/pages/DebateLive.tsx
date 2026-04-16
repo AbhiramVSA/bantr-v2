@@ -10,6 +10,15 @@ import { useLiveKitSession } from "../hooks/useLiveKitSession";
 import { endDebate, startDebate } from "../services/debates";
 import { ApiError } from "../types/api";
 
+function isBenignLiveKitError(message: string) {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("client initiated disconnect") ||
+    normalized.includes("websocket is closed before the connection is established") ||
+    normalized.includes("abort connection attempt due to user initiated disconnect")
+  );
+}
+
 export function DebateLive() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
@@ -81,6 +90,13 @@ export function DebateLive() {
     navigate(`/debates/${id}`);
   }
 
+  function handleRoomError(issue: Error) {
+    if (isBenignLiveKitError(issue.message)) {
+      return;
+    }
+    setError(issue.message);
+  }
+
   if (loading) {
     return <Spinner />;
   }
@@ -150,7 +166,8 @@ export function DebateLive() {
           isEnding={ending}
           onLeave={handleLeave}
           onEnd={handleEnd}
-          onError={(issue) => setError(issue.message)}
+          onDisconnected={() => setError("")}
+          onError={handleRoomError}
         />
       ) : null}
 
