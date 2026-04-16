@@ -3,7 +3,7 @@ import { apiRequest } from "./api";
 
 const API_ROOT =
   import.meta.env.VITE_API_BASE_URL ??
-  (import.meta.env.DEV ? "http://127.0.0.1:8000/api/v1" : "/api/v1");
+  (import.meta.env.DEV ? "http://localhost:8000/api/v1" : "/api/v1");
 
 type AuthPayload = {
   id: string;
