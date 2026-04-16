@@ -16,3 +16,8 @@ claude.md
 
 # Local AI-generated planning/docs artifacts
 docs/superpowers/
+
+# Frontend build artifacts and dependencies
+bantr/frontend/node_modules/
+bantr/frontend/dist/
+bantr/frontend/.vite/
