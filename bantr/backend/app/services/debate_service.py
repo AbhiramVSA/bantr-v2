@@ -22,7 +22,8 @@ from app.schemas.debate import DebateCreate
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_AGENT_NAME = "bantr-debate"
+DEFAULT_AGENT_NAME = settings.LIVEKIT_AGENT_NAME
+END_IDEMPOTENT_STATUSES = {"ending", "completed", "failed"}
 
 
 async def create_new_debate(
@@ -42,12 +43,20 @@ async def create_new_debate(
 async def start_debate(
     db: AsyncSession, debate: Debate, user_id: uuid.UUID
 ) -> tuple[str, str]:
+    if debate.status == "active":
+        token = _generate_participant_token(debate.livekit_room_name, str(user_id), "user")
+        return token, settings.LIVEKIT_URL
+
     if debate.status != "pending":
         raise ConflictError(
             "INVALID_STATUS", f"Debate is '{debate.status}', expected 'pending'"
         )
 
+    debate.status = "starting"
+    await db.flush()
+
     metadata = {"debate_id": str(debate.id)}
+    room_created = False
 
     api = LiveKitAPI(
         url=settings.LIVEKIT_URL,
@@ -61,16 +70,34 @@ async def start_debate(
                 metadata=json.dumps(metadata),
             )
         )
-        await api.agent_dispatch.create_dispatch(
+        room_created = True
+        dispatch = await api.agent_dispatch.create_dispatch(
             CreateAgentDispatchRequest(
                 room=debate.livekit_room_name,
                 agent_name=DEFAULT_AGENT_NAME,
                 metadata=json.dumps(metadata),
             )
         )
+        logger.info(
+            "LiveKit dispatch created: room=%s agent=%s dispatch_id=%s",
+            debate.livekit_room_name,
+            DEFAULT_AGENT_NAME,
+            getattr(dispatch, "id", None),
+        )
     except Exception as exc:
+        if room_created:
+            try:
+                await api.room.delete_room(DeleteRoomRequest(room=debate.livekit_room_name))
+            except Exception:
+                logger.exception(
+                    "Failed to compensate room after dispatch failure: %s",
+                    debate.livekit_room_name,
+                )
+
         debate.status = "failed"
+        debate.ended_at = datetime.now(timezone.utc)
         await db.flush()
+        await db.commit()
         logger.exception("Failed to start debate room/dispatch")
         raise AppError(
             "ROOM_START_FAILED",
@@ -89,6 +116,9 @@ async def start_debate(
 
 
 async def end_debate(db: AsyncSession, debate: Debate) -> None:
+    if debate.status in END_IDEMPOTENT_STATUSES:
+        return
+
     if debate.status != "active":
         raise ConflictError(
             "INVALID_STATUS", f"Debate is '{debate.status}', expected 'active'"
@@ -135,16 +165,18 @@ def generate_join_token(room_name: str, user_id: str) -> str:
 def _generate_participant_token(
     room_name: str, identity: str, name: str
 ) -> str:
-    token = AccessToken(
-        api_key=settings.LIVEKIT_API_KEY,
-        api_secret=settings.LIVEKIT_API_SECRET,
-    )
-    token.identity = identity
-    token.name = name
-    token.add_grant(
-        VideoGrants(
-            room_join=True,
-            room=room_name,
+    token = (
+        AccessToken(
+            api_key=settings.LIVEKIT_API_KEY,
+            api_secret=settings.LIVEKIT_API_SECRET,
+        )
+        .with_identity(identity)
+        .with_name(name)
+        .with_grants(
+            VideoGrants(
+                room_join=True,
+                room=room_name,
+            )
         )
     )
     return token.to_jwt()
