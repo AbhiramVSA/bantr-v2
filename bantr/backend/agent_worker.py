@@ -5,6 +5,8 @@ import math
 import os
 import sys
 import uuid
+from contextlib import asynccontextmanager
+import ssl as _ssl
 
 from dotenv import load_dotenv
 from livekit import rtc
@@ -21,6 +23,8 @@ from livekit.agents.voice import room_io
 from livekit.plugins import elevenlabs, silero
 from livekit.rtc._proto import room_pb2
 from pydantic_ai import Agent as PydanticAgent
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.prompts import WORKER_PLANNER_INSTRUCTIONS, build_worker_planner_prompt
 from app.schemas.llm import WorkerPlanOutput
@@ -53,8 +57,35 @@ WORKER_PLAN_RETRIES = 2
 WORKER_PLAN_TIMEOUT_SECONDS = 45
 JOB_ACCEPT_RETRIES = 3
 JOB_ACCEPT_BACKOFF_SECONDS = 0.5
+_worker_connect_args: dict = {}
+if settings.DATABASE_HOST not in ("localhost", "127.0.0.1"):
+    _worker_connect_args["ssl"] = _ssl.create_default_context()
+    _worker_connect_args["statement_cache_size"] = 0
+    _worker_connect_args["prepared_statement_cache_size"] = 0
 
 _worker_planner_agent: PydanticAgent[WorkerPlanOutput] | None = None
+
+
+@asynccontextmanager
+async def _worker_db_session():
+    """Create a loop-local DB session to avoid cross-loop asyncpg pool reuse in worker jobs."""
+    engine = create_async_engine(
+        settings.ASYNC_DATABASE_URI,
+        poolclass=NullPool,
+        pool_pre_ping=True,
+        connect_args=_worker_connect_args,
+    )
+    session_factory = async_sessionmaker(
+        engine,
+        autoflush=False,
+        autocommit=False,
+        expire_on_commit=False,
+    )
+    try:
+        async with session_factory() as session:
+            yield session
+    finally:
+        await engine.dispose()
 
 
 def _get_worker_planner_agent() -> PydanticAgent[WorkerPlanOutput]:
@@ -238,9 +269,8 @@ def _parse_json_dict(raw: str) -> dict:
 async def _load_debate_config(debate_id: str) -> dict | None:
     try:
         from app.crud.debate import get_debate_by_id
-        from app.db.session import AsyncSessionLocal
 
-        async with AsyncSessionLocal() as db:
+        async with _worker_db_session() as db:
             debate = await get_debate_by_id(db, uuid.UUID(debate_id))
             if not debate:
                 return None
@@ -302,7 +332,6 @@ def _extract_text_content(message) -> str:
 async def _save_transcript(debate_id: str, session: AgentSession):
     from app.crud.debate import get_debate_by_id
     from app.crud.transcript import create_transcript, get_transcript_by_debate_id
-    from app.db.session import AsyncSessionLocal
 
     try:
         did = uuid.UUID(debate_id)
@@ -337,7 +366,7 @@ async def _save_transcript(debate_id: str, session: AgentSession):
 
     full_text = "\n".join(full_parts)
 
-    async with AsyncSessionLocal() as db:
+    async with _worker_db_session() as db:
         try:
             debate = await get_debate_by_id(db, did)
             if not debate:
@@ -378,10 +407,9 @@ def _iter_chat_messages(session: AgentSession):
 
 async def _mark_debate_terminal(debate_id: uuid.UUID, status: str) -> None:
     from app.crud.debate import get_debate_by_id
-    from app.db.session import AsyncSessionLocal
 
     try:
-        async with AsyncSessionLocal() as db:
+        async with _worker_db_session() as db:
             debate = await get_debate_by_id(db, debate_id)
             if not debate:
                 return
