@@ -4,6 +4,7 @@ import { cn } from "../../utils/cn";
 
 export function Sidebar() {
   const { user, logoutUser } = useAuth();
+  const userPermissions = user?.permissions ?? [];
   const navItems = [
     { to: "/dashboard", icon: "dashboard", label: "Dashboard" },
     { to: "/debates", icon: "mic_none", label: "My Debates" },
@@ -55,7 +56,7 @@ export function Sidebar() {
           Upgrade to Pro
         </Link>
         <div className="space-y-1">
-          {user?.permissions.includes("users:read") ? (
+          {userPermissions.includes("users:read") ? (
             <NavLink
               to="/admin/users"
               className="flex items-center gap-3 px-6 py-3 text-slate-600 hover:bg-[#d5ebff] rounded-full hover:translate-x-2 transition-all duration-300"
