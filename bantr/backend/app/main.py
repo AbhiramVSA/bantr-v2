@@ -37,6 +37,8 @@ async def lifespan(app: FastAPI):
                     await reconcile_stale_debates(
                         session,
                         stale_after_seconds=settings.DEBATE_STALE_AFTER_SECONDS,
+                        empty_room_seconds=settings.DEBATE_EMPTY_ROOM_SECONDS,
+                        active_max_seconds=settings.DEBATE_ACTIVE_MAX_SECONDS,
                     )
                     await session.commit()
             except Exception:
@@ -56,9 +58,11 @@ async def lifespan(app: FastAPI):
 
     reconcile_task = asyncio.create_task(_reconcile_loop())
     logger.info(
-        "Debate reconciler started (interval=%ss, stale_after=%ss)",
+        "Debate reconciler started (interval=%ss, transition_stale_after=%ss, empty_room_after=%ss, active_max=%ss)",
         settings.DEBATE_RECONCILE_INTERVAL_SECONDS,
         settings.DEBATE_STALE_AFTER_SECONDS,
+        settings.DEBATE_EMPTY_ROOM_SECONDS,
+        settings.DEBATE_ACTIVE_MAX_SECONDS,
     )
     try:
         yield

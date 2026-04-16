@@ -61,6 +61,8 @@ class Settings(BaseSettings):
     ELEVENLABS_TTS_MODEL: str = "eleven_flash_v2_5"
     OPENAI_EMBED_MODEL: str = "text-embedding-3-small"
     DEBATE_STALE_AFTER_SECONDS: int = 180
+    DEBATE_EMPTY_ROOM_SECONDS: int = 120
+    DEBATE_ACTIVE_MAX_SECONDS: int = 1800
     DEBATE_RECONCILE_INTERVAL_SECONDS: int = 30
 
     # Optional provider keys that may exist in shared env files.
