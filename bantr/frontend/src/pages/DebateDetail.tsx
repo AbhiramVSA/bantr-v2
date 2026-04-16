@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { DebateDetailPanel } from "../components/debate/DebateDetailPanel";
+import { LiveKitRoomPanel } from "../components/debate/LiveKitRoomPanel";
 import { PageContainer } from "../components/layout/PageContainer";
 import { ErrorState } from "../components/ui/ErrorState";
 import { Modal } from "../components/ui/Modal";
@@ -21,7 +22,13 @@ export function DebateDetail() {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const livekit = useLiveKitSession(id);
-  const { prepare: prepareLiveKit, disconnect: disconnectLiveKit, status: livekitStatus, url: livekitUrl } = livekit;
+  const {
+    prepare: prepareLiveKit,
+    disconnect: disconnectLiveKit,
+    status: livekitStatus,
+    token: livekitToken,
+    url: livekitUrl,
+  } = livekit;
 
   const loadDebate = useCallback(async () => {
     setLoading(true);
@@ -126,6 +133,17 @@ export function DebateDetail() {
         isDeleting={deleting}
         livekitRoomName={debate.livekit_room_name}
         livekitUrl={livekitUrl}
+      />
+      <LiveKitRoomPanel
+        roomName={debate.livekit_room_name}
+        token={livekitToken}
+        url={livekitUrl}
+        isActive={debate.status === "active"}
+        onDisconnected={() => {
+          disconnectLiveKit();
+          void loadDebate();
+        }}
+        onError={(roomError) => setError(roomError.message)}
       />
       <Modal
         isOpen={showDeleteModal}

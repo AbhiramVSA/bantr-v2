@@ -118,10 +118,10 @@ export function DebateDetailPanel({
         </Card>
 
         <Card className="p-8 bg-primary text-on-primary">
-          <h2 className="text-2xl font-headline font-extrabold">LiveKit Prep</h2>
+          <h2 className="text-2xl font-headline font-extrabold">LiveKit Cloud</h2>
           <p className="mt-3 leading-relaxed text-on-primary/90">
-            Token and room details are prepared for LiveKit integration, but the actual room
-            client remains a stub for this POC.
+            Bantr uses LiveKit Cloud for the live debate room. Your browser joins directly with
+            a short-lived access token issued by the backend.
           </p>
           <div className="mt-5 text-sm">
             <p>Room: {livekitRoomName ?? debate.livekit_room_name}</p>

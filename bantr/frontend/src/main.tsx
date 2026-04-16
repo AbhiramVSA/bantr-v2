@@ -1,5 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import "@livekit/components-styles";
 import { AppProviders } from "./app/providers";
 import "./index.css";
 
