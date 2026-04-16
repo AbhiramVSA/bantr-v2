@@ -4,9 +4,11 @@ import {
   RoomAudioRenderer,
   useConnectionState,
   useLocalParticipant,
+  useTranscriptions,
   useVoiceAssistant,
 } from "@livekit/components-react";
 import { ConnectionState } from "livekit-client";
+import { useMemo } from "react";
 import { Card } from "../ui/Card";
 import { Button } from "../ui/Button";
 
@@ -61,6 +63,7 @@ function DebateRoomStage({
     lastMicrophoneError,
   } = useLocalParticipant();
   const { agent, state: agentState, audioTrack, agentTranscriptions } = useVoiceAssistant();
+  const transcriptions = useTranscriptions();
 
   const connectionLabel =
     connectionState === ConnectionState.Connected
@@ -93,6 +96,33 @@ function DebateRoomStage({
     .map((segment) => segment.text.trim())
     .filter(Boolean)
     .slice(-4);
+  const transcriptLines = useMemo(() => {
+    return transcriptions
+      .map((segment) => {
+        const text = segment.text.trim();
+        if (!text) {
+          return null;
+        }
+
+        const identity = segment.participantInfo.identity;
+        const speaker =
+          identity === localParticipant.identity
+            ? "You"
+            : agent && identity === agent.identity
+              ? agent.name || "Bantr Coach"
+              : "Debate stream";
+
+        return {
+          key: `${segment.streamInfo.id}:${identity}`,
+          text,
+          speaker,
+          isLocal: identity === localParticipant.identity,
+          isAgent: Boolean(agent && identity === agent.identity),
+        };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+      .slice(-8);
+  }, [agent, localParticipant.identity, transcriptions]);
   const localMicTrackRef = microphoneTrack
     ? {
         participant: localParticipant,
@@ -213,21 +243,39 @@ function DebateRoomStage({
       <Card className="p-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">Agent transcript stream</p>
-            <h2 className="mt-2 text-2xl font-headline font-extrabold text-on-background">Live responses</h2>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">Live transcript stream</p>
+            <h2 className="mt-2 text-2xl font-headline font-extrabold text-on-background">Conversation</h2>
           </div>
           <StatusPill label={agentLabel} tone={agentTone} />
         </div>
         <div className="mt-6 space-y-3">
-          {recentLines.length ? (
-            recentLines.map((line) => (
-              <div key={line} className="rounded-2xl bg-surface-container-low px-5 py-4 text-on-surface">
-                {line}
+          {transcriptLines.length ? (
+            transcriptLines.map((line) => (
+              <div
+                key={line.key}
+                className={`rounded-2xl px-5 py-4 ${
+                  line.isAgent
+                    ? "bg-primary text-on-primary"
+                    : line.isLocal
+                      ? "bg-surface-container-low text-on-surface"
+                      : "bg-surface-container text-on-surface"
+                }`}
+              >
+                <p
+                  className={`text-xs font-bold uppercase tracking-[0.18em] ${
+                    line.isAgent ? "text-on-primary/70" : "text-on-surface-variant"
+                  }`}
+                >
+                  {line.speaker}
+                </p>
+                <p className="mt-2 leading-relaxed">{line.text}</p>
               </div>
             ))
           ) : (
             <div className="rounded-[2rem] border-2 border-dashed border-outline-variant/20 bg-surface-container-low px-6 py-10 text-center text-on-surface-variant">
-              The room is connected. The first agent reply will appear here once the conversation starts.
+              {recentLines.length
+                ? "The agent is speaking. Your full conversation transcript will appear here as LiveKit emits transcription segments."
+                : "The room is connected. Speak to interrupt or respond, and Bantr will stream both sides of the conversation here."}
             </div>
           )}
         </div>

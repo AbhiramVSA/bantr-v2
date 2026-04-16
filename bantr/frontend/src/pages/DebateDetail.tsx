@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { DebateDetailPanel } from "../components/debate/DebateDetailPanel";
 import { PageContainer } from "../components/layout/PageContainer";
@@ -17,6 +17,18 @@ export function DebateDetail() {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { debate, setDebate, loading, error, setError, loadDebate } = useDebate(id);
+
+  useEffect(() => {
+    if (!debate || !["starting", "active", "ending"].includes(debate.status)) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      void loadDebate({ silent: true }).catch(() => undefined);
+    }, 5000);
+
+    return () => window.clearInterval(interval);
+  }, [debate, loadDebate]);
 
   async function handleStart() {
     setStarting(true);
