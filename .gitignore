@@ -5,3 +5,14 @@ __pycache__/
 
 # Claude Code local config
 .claude/
+CLAUDE.md
+claude.md
+
+# Other local AI assistant tooling
+.codex/
+.cursor/
+.aider*
+.roo/
+
+# Local AI-generated planning/docs artifacts
+docs/superpowers/
