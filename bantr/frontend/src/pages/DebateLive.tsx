@@ -44,7 +44,7 @@ export function DebateLive() {
     }
 
     const interval = window.setInterval(() => {
-      void loadDebate().catch(() => undefined);
+      void loadDebate({ silent: true }).catch(() => undefined);
     }, 10000);
 
     return () => window.clearInterval(interval);

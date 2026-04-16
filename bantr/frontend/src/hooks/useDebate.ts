@@ -3,14 +3,25 @@ import { getDebate } from "../services/debates";
 import type { Debate } from "../types/debate";
 import { ApiError } from "../types/api";
 
+type LoadDebateOptions = {
+  silent?: boolean;
+};
+
 export function useDebate(debateId: string) {
   const [debate, setDebate] = useState<Debate | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
-  const loadDebate = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  const loadDebate = useCallback(async (options?: LoadDebateOptions) => {
+    const silent = options?.silent ?? false;
+
+    if (silent) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+      setError("");
+    }
     try {
       const response = await getDebate(debateId);
       setDebate(response);
@@ -20,7 +31,11 @@ export function useDebate(debateId: string) {
       setError(message);
       throw issue;
     } finally {
-      setLoading(false);
+      if (silent) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
     }
   }, [debateId]);
 
@@ -32,6 +47,7 @@ export function useDebate(debateId: string) {
     debate,
     setDebate,
     loading,
+    refreshing,
     error,
     setError,
     loadDebate,
