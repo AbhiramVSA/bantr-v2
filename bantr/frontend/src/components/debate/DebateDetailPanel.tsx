@@ -10,6 +10,7 @@ type Props = {
   onStart: () => void;
   onEnd: () => void;
   onDelete: () => void;
+  onJoinLive: () => void;
   isStarting: boolean;
   isEnding: boolean;
   isDeleting: boolean;
@@ -22,6 +23,7 @@ export function DebateDetailPanel({
   onStart,
   onEnd,
   onDelete,
+  onJoinLive,
   isStarting,
   isEnding,
   isDeleting,
@@ -32,6 +34,7 @@ export function DebateDetailPanel({
   const canEnd = debate.status === "active";
   const canDelete = debate.status === "completed" || debate.status === "failed";
   const hasArtifacts = debate.status === "completed";
+  const canJoinLive = debate.status === "active" || debate.status === "starting";
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1.3fr_0.7fr]">
@@ -58,6 +61,11 @@ export function DebateDetailPanel({
           <Button onClick={onStart} disabled={!canStart || isStarting}>
             {isStarting ? "Starting..." : "Start Debate"}
           </Button>
+          {canJoinLive ? (
+            <Button variant="ghost" onClick={onJoinLive}>
+              {debate.status === "starting" ? "Open Live Room" : "Join Live Debate"}
+            </Button>
+          ) : null}
           <Button variant="secondary" onClick={onEnd} disabled={!canEnd || isEnding}>
             {isEnding ? "Ending..." : "End Debate"}
           </Button>
@@ -118,10 +126,10 @@ export function DebateDetailPanel({
         </Card>
 
         <Card className="p-8 bg-primary text-on-primary">
-          <h2 className="text-2xl font-headline font-extrabold">LiveKit Cloud</h2>
+          <h2 className="text-2xl font-headline font-extrabold">Live debate room</h2>
           <p className="mt-3 leading-relaxed text-on-primary/90">
-            Bantr uses LiveKit Cloud for the live debate room. Your browser joins directly with
-            a short-lived access token issued by the backend.
+            Bantr uses LiveKit Cloud for the live call, but the call now lives on its own page.
+            Join the live room to see connection state, agent status, and room controls.
           </p>
           <div className="mt-5 text-sm">
             <p>Room: {livekitRoomName ?? debate.livekit_room_name}</p>

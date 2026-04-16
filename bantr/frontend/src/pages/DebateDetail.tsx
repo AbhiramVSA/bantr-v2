@@ -1,74 +1,34 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { DebateDetailPanel } from "../components/debate/DebateDetailPanel";
-import { LiveKitRoomPanel } from "../components/debate/LiveKitRoomPanel";
 import { PageContainer } from "../components/layout/PageContainer";
 import { ErrorState } from "../components/ui/ErrorState";
 import { Modal } from "../components/ui/Modal";
 import { Spinner } from "../components/ui/Spinner";
-import { useLiveKitSession } from "../hooks/useLiveKitSession";
-import { deleteDebate, endDebate, getDebate, startDebate } from "../services/debates";
-import type { Debate } from "../types/debate";
+import { useDebate } from "../hooks/useDebate";
+import { deleteDebate, endDebate, startDebate } from "../services/debates";
 import { ApiError } from "../types/api";
 
 export function DebateDetail() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
-  const [debate, setDebate] = useState<Debate | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [starting, setStarting] = useState(false);
   const [ending, setEnding] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const livekit = useLiveKitSession(id);
-  const {
-    prepare: prepareLiveKit,
-    disconnect: disconnectLiveKit,
-    status: livekitStatus,
-    token: livekitToken,
-    url: livekitUrl,
-  } = livekit;
-
-  const loadDebate = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const response = await getDebate(id);
-      setDebate(response);
-    } catch (issue) {
-      setError(issue instanceof ApiError ? issue.message : "Unable to load debate.");
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    void loadDebate();
-  }, [loadDebate]);
-
-  useEffect(() => {
-    if (!debate || debate.status !== "active" || livekitStatus !== "idle") {
-      return;
-    }
-
-    void prepareLiveKit().catch((issue) => {
-      setError(issue instanceof ApiError ? issue.message : "Unable to prepare the LiveKit session.");
-    });
-  }, [debate, livekitStatus, prepareLiveKit]);
+  const { debate, setDebate, loading, error, setError, loadDebate } = useDebate(id);
 
   async function handleStart() {
     setStarting(true);
     setError("");
     try {
       const response = await startDebate(id);
-      await prepareLiveKit({ token: response.livekit_token, url: response.livekit_url });
       setDebate((current) =>
         current
           ? { ...current, status: response.status, livekit_room_name: response.livekit_room_name }
           : current,
       );
-      await loadDebate();
+      navigate(`/debates/${id}/live`);
     } catch (issue) {
       setError(issue instanceof ApiError ? issue.message : "Unable to start debate.");
     } finally {
@@ -82,7 +42,6 @@ export function DebateDetail() {
     try {
       const response = await endDebate(id);
       setDebate((current) => (current ? { ...current, status: response.status } : current));
-      disconnectLiveKit();
       await loadDebate();
     } catch (issue) {
       setError(issue instanceof ApiError ? issue.message : "Unable to end debate.");
@@ -128,22 +87,12 @@ export function DebateDetail() {
         onStart={handleStart}
         onEnd={handleEnd}
         onDelete={() => setShowDeleteModal(true)}
+        onJoinLive={() => navigate(`/debates/${id}/live`)}
         isStarting={starting}
         isEnding={ending}
         isDeleting={deleting}
         livekitRoomName={debate.livekit_room_name}
-        livekitUrl={livekitUrl}
-      />
-      <LiveKitRoomPanel
-        roomName={debate.livekit_room_name}
-        token={livekitToken}
-        url={livekitUrl}
-        isActive={debate.status === "active"}
-        onDisconnected={() => {
-          disconnectLiveKit();
-          void loadDebate();
-        }}
-        onError={(roomError) => setError(roomError.message)}
+        livekitUrl={null}
       />
       <Modal
         isOpen={showDeleteModal}

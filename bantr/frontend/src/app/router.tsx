@@ -9,6 +9,7 @@ import { Chat } from "../pages/Chat";
 import { CreateDebate } from "../pages/CreateDebate";
 import { Dashboard } from "../pages/Dashboard";
 import { DebateDetail } from "../pages/DebateDetail";
+import { DebateLive } from "../pages/DebateLive";
 import { Landing } from "../pages/Landing";
 import { MyDebates } from "../pages/MyDebates";
 import { Notifications } from "../pages/Notifications";
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
           { path: "/dashboard", element: <Dashboard /> },
           { path: "/debates", element: <MyDebates /> },
           { path: "/debates/:id", element: <DebateDetail /> },
+          { path: "/debates/:id/live", element: <DebateLive /> },
           { path: "/create", element: <CreateDebate /> },
           { path: "/transcript/:id", element: <Transcript /> },
           { path: "/analysis/:id", element: <Analysis /> },
