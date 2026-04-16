@@ -2,7 +2,9 @@ import asyncio
 import logging
 import uuid
 
-from openai import AsyncOpenAI
+from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.openai import OpenAIProvider
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -11,16 +13,65 @@ from app.crud.chat_message import create_chat_message, get_recent_chat_messages
 from app.crud.debate import get_debate_by_id
 from app.crud.debate_embedding import search_similar_embeddings
 from app.models.chat_message import ChatMessage
+from app.prompts import CHAT_AGENT_INSTRUCTIONS, build_chat_user_prompt
+from app.schemas.llm import ChatCoachOutput
 from app.services.embedding_service import embed_query
 
 logger = logging.getLogger(__name__)
 
-OPENAI_TIMEOUT_SECONDS = 60
-OPENAI_RETRIES = 2
+CHAT_TIMEOUT_SECONDS = 60
+CHAT_RETRIES = 2
 
-CHAT_SYSTEM_PROMPT = """You are a helpful debate coach.
-You have access to snippets from the user's past debates.
-Give concise, actionable coaching and reference debate evidence when relevant."""
+_chat_model_name = settings.OPENAI_SIMPLE_MODEL.removeprefix("openai:")
+chat_agent = Agent(
+    model=OpenAIChatModel(
+        _chat_model_name,
+        provider=OpenAIProvider(api_key=settings.OPENAI_API_KEY),
+    ),
+    output_type=ChatCoachOutput,
+    instructions=CHAT_AGENT_INSTRUCTIONS,
+    retries=CHAT_RETRIES,
+    output_retries=CHAT_RETRIES,
+    defer_model_check=True,
+)
+
+
+def _format_recent_history(messages: list[ChatMessage]) -> str:
+    if not messages:
+        return "No previous chat messages."
+    lines: list[str] = []
+    for message in messages:
+        role = message.role.upper()
+        lines.append(f"{role}: {message.content}")
+    return "\n".join(lines)
+
+
+async def _generate_chat_response(
+    *,
+    user_message: str,
+    context_text: str,
+    history_text: str,
+) -> str:
+    try:
+        result = await asyncio.wait_for(
+            chat_agent.run(
+                build_chat_user_prompt(
+                    user_message=user_message,
+                    context_text=context_text,
+                    history_text=history_text,
+                )
+            ),
+            timeout=CHAT_TIMEOUT_SECONDS,
+        )
+    except Exception as exc:
+        logger.exception("Chat agent call failed")
+        raise AppError(
+            "CHAT_FAILED",
+            "Failed to generate chat response",
+            status_code=502,
+        ) from exc
+
+    return result.output.response
 
 
 async def handle_chat_message(
@@ -47,43 +98,12 @@ async def handle_chat_message(
     )
 
     recent = await get_recent_chat_messages(db, user_id, limit=10)
-    history_messages = [{"role": msg.role, "content": msg.content} for msg in recent]
-
-    messages = [
-        {"role": "system", "content": CHAT_SYSTEM_PROMPT},
-        {"role": "system", "content": f"Relevant context:\n\n{context_text}"},
-        *history_messages,
-        {"role": "user", "content": message},
-    ]
-
-    client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-    response = None
-    for attempt in range(OPENAI_RETRIES):
-        try:
-            response = await asyncio.wait_for(
-                client.chat.completions.create(
-                    model=settings.OPENAI_CHAT_MODEL,
-                    messages=messages,
-                ),
-                timeout=OPENAI_TIMEOUT_SECONDS,
-            )
-            break
-        except Exception:
-            logger.exception("OpenAI chat call failed on attempt %s", attempt + 1)
-            if attempt == OPENAI_RETRIES - 1:
-                raise AppError(
-                    "CHAT_FAILED",
-                    "Failed to generate chat response",
-                    status_code=502,
-                )
-
-    assistant_content = response.choices[0].message.content if response else None
-    if not assistant_content:
-        raise AppError(
-            "CHAT_INVALID",
-            "OpenAI returned empty chat response",
-            status_code=502,
-        )
+    history_text = _format_recent_history(recent)
+    assistant_content = await _generate_chat_response(
+        user_message=message,
+        context_text=context_text,
+        history_text=history_text,
+    )
 
     context_ids = list(debate_ids_seen.keys()) if debate_ids_seen else None
     await create_chat_message(

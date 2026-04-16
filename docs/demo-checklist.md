@@ -11,7 +11,9 @@
 - `LIVEKIT_API_KEY`
 - `LIVEKIT_API_SECRET`
 - `OPENAI_API_KEY`
-- `OPENAI_CHAT_MODEL` (default: `gpt-4.1-mini`)
+- `OPENAI_COMPLEX_MODEL` (default: `openai:gpt-5.1`)
+- `OPENAI_SIMPLE_MODEL` (default: `openai:gpt-5-mini`)
+- `LIVEKIT_LLM_MODEL` (default: `openai/gpt-5.1`)
 - `OPENAI_EMBED_MODEL` (default: `text-embedding-3-small`)
 
 ## Startup
