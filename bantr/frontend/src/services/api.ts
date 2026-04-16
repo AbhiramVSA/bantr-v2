@@ -1,7 +1,9 @@
 import { ApiError, type ApiErrorShape } from "../types/api";
 import { getCookie } from "../utils/cookies";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ??
+  (import.meta.env.DEV ? "http://127.0.0.1:8000/api/v1" : "/api/v1");
 const AUTH_RETRY_EXCLUDED_PATHS = new Set([
   "/auth/login",
   "/auth/register",
