@@ -1,7 +1,7 @@
 import uuid
 from typing import Any
 
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import CheckConstraint, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -23,3 +23,10 @@ class DebateAnalysis(Base):
     winner: Mapped[str | None] = mapped_column(String(10))
 
     debate: Mapped["Debate"] = relationship(back_populates="analysis")
+
+    __table_args__ = (
+        CheckConstraint(
+            "winner IS NULL OR winner IN ('user', 'agent', 'draw')",
+            name="ck_debate_analyses_winner_valid",
+        ),
+    )

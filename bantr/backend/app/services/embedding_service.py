@@ -1,5 +1,8 @@
 import asyncio
+import json
 import logging
+from collections.abc import Iterable
+from typing import Any
 
 from openai import AsyncOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +19,43 @@ logger = logging.getLogger(__name__)
 CHUNK_SIZE = 500  # approximate tokens per chunk
 OPENAI_TIMEOUT_SECONDS = 45
 OPENAI_RETRIES = 2
+
+
+def _normalize_embedding_vector(value: Any) -> list[float]:
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError as exc:
+            raise AppError(
+                "EMBEDDING_FAILED",
+                "Embedding response was not valid JSON",
+                status_code=502,
+            ) from exc
+
+    if not isinstance(value, Iterable) or isinstance(value, (str, bytes)):
+        raise AppError(
+            "EMBEDDING_FAILED",
+            "Embedding response had an unexpected format",
+            status_code=502,
+        )
+
+    try:
+        vector = [float(x) for x in value]
+    except (TypeError, ValueError) as exc:
+        raise AppError(
+            "EMBEDDING_FAILED",
+            "Embedding response contained non-numeric values",
+            status_code=502,
+        ) from exc
+
+    if not vector:
+        raise AppError(
+            "EMBEDDING_FAILED",
+            "Embedding response was empty",
+            status_code=502,
+        )
+
+    return vector
 
 
 def chunk_transcript(transcript: Transcript) -> list[dict]:
@@ -92,13 +132,14 @@ async def embed_transcript(
 
     embedding_records = []
     for chunk, embedding_data in zip(chunks, response.data):
+        vector = _normalize_embedding_vector(embedding_data.embedding)
         embedding_records.append(
             DebateEmbedding(
                 debate_id=debate.id,
                 user_id=debate.user_id,
                 chunk_index=chunk["chunk_index"],
                 chunk_text=chunk["chunk_text"],
-                embedding=embedding_data.embedding,
+                embedding=vector,
                 speaker=chunk["speaker"],
             )
         )
@@ -131,4 +172,4 @@ async def embed_query(text: str) -> list[float]:
                     status_code=502,
                 )
 
-    return response.data[0].embedding
+    return _normalize_embedding_vector(response.data[0].embedding)

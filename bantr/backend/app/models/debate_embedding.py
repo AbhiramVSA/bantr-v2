@@ -1,7 +1,7 @@
 import uuid
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import ForeignKey, Index, String, Text
+from sqlalchemy import CheckConstraint, ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -30,5 +30,14 @@ class DebateEmbedding(Base):
             postgresql_using="hnsw",
             postgresql_with={"m": 16, "ef_construction": 64},
             postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+        UniqueConstraint(
+            "debate_id",
+            "chunk_index",
+            name="uq_debate_embeddings_debate_chunk",
+        ),
+        CheckConstraint(
+            "speaker IN ('user', 'agent')",
+            name="ck_debate_embeddings_speaker_valid",
         ),
     )

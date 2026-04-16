@@ -1,7 +1,6 @@
 import ssl as _ssl
 from collections.abc import AsyncGenerator
 
-from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import settings
@@ -32,15 +31,11 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 
-async def _register_vector(conn):
-    from pgvector.asyncpg import register_vector
-
-    await register_vector(conn)
-
-
-@event.listens_for(engine.sync_engine, "connect")
-def _on_connect(dbapi_connection, connection_record):
-    dbapi_connection.run_async(_register_vector)
+# NOTE:
+# With SQLAlchemy's pgvector type (mapped_column(Vector(...))), bind/result
+# processing is already handled by the SQLAlchemy type. Registering asyncpg's
+# pgvector codec here can cause double encoding of vector parameters and break
+# inserts with "could not convert string to float: '['".
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

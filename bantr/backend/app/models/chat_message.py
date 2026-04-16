@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import ForeignKey, Index, String, Text
+from sqlalchemy import CheckConstraint, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -19,4 +19,5 @@ class ChatMessage(Base):
 
     __table_args__ = (
         Index("ix_chat_messages_user_created", "user_id", "created_at"),
+        CheckConstraint("role IN ('user', 'assistant')", name="ck_chat_messages_role_valid"),
     )

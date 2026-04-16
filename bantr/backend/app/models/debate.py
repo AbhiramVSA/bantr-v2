@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -31,4 +31,11 @@ class Debate(Base):
     )
     embeddings: Mapped[list["DebateEmbedding"]] = relationship(
         back_populates="debate", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'starting', 'active', 'ending', 'completed', 'failed')",
+            name="ck_debates_status_valid",
+        ),
     )

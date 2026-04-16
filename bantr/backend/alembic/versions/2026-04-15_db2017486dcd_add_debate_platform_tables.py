@@ -115,5 +115,6 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_chat_messages_user_id'), table_name='chat_messages')
     op.drop_index('ix_chat_messages_user_created', table_name='chat_messages')
     op.drop_table('chat_messages')
-    op.execute("DROP EXTENSION IF EXISTS vector")
+    # Intentionally keep vector extension to avoid impacting other relations that may
+    # depend on it outside this migration chain.
     # ### end Alembic commands ###
