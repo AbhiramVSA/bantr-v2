@@ -3,8 +3,49 @@ import { apiRequest } from "./api";
 
 const API_ROOT = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 
+type AuthPayload = {
+  id: string;
+  email: string;
+  username: string;
+  role?: string | { id?: string; name?: string; description?: string } | null;
+  permissions?:
+    | string[]
+    | Array<string | { id?: string; name?: string; description?: string }>
+    | null;
+};
+
+function normalizeUserProfile(payload: AuthPayload): UserProfile {
+  const normalizedRole =
+    typeof payload.role === "string"
+      ? payload.role
+      : payload.role && typeof payload.role === "object"
+        ? payload.role.name ?? null
+        : null;
+
+  const normalizedPermissions = Array.isArray(payload.permissions)
+    ? payload.permissions
+        .map((permission) =>
+          typeof permission === "string"
+            ? permission
+            : permission && typeof permission === "object"
+              ? permission.name
+              : null,
+        )
+        .filter((permission): permission is string => Boolean(permission))
+    : [];
+
+  return {
+    id: payload.id,
+    email: payload.email,
+    username: payload.username,
+    role: normalizedRole,
+    permissions: normalizedPermissions,
+  };
+}
+
 export async function getCurrentUser() {
-  return apiRequest<UserProfile>("/auth/me", { method: "GET" });
+  const response = await apiRequest<AuthPayload>("/auth/me", { method: "GET" });
+  return normalizeUserProfile(response);
 }
 
 export async function login(payload: LoginPayload) {

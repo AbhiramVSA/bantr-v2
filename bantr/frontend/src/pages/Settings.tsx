@@ -5,6 +5,16 @@ import { useAuth } from "../hooks/useAuth";
 
 export function Settings() {
   const { user } = useAuth();
+  const roleValue: unknown = user?.role;
+  const roleLabel =
+    typeof roleValue === "string"
+      ? roleValue
+      : roleValue && typeof roleValue === "object" && "name" in roleValue
+        ? String(roleValue.name ?? "user")
+        : "user";
+  const permissions = Array.isArray(user?.permissions)
+    ? user.permissions.filter((permission): permission is string => typeof permission === "string")
+    : [];
 
   return (
     <PageContainer className="space-y-8">
@@ -31,7 +41,7 @@ export function Settings() {
             </div>
             <div>
               <dt className="text-xs font-black uppercase tracking-[0.2em] text-on-surface-variant">Role</dt>
-              <dd className="mt-2 text-lg text-on-surface">{user?.role ?? "user"}</dd>
+              <dd className="mt-2 text-lg text-on-surface">{roleLabel}</dd>
             </div>
             <div>
               <dt className="text-xs font-black uppercase tracking-[0.2em] text-on-surface-variant">User ID</dt>
@@ -43,8 +53,8 @@ export function Settings() {
         <Card className="p-8">
           <h2 className="text-2xl font-headline font-extrabold text-on-background">Access</h2>
           <div className="mt-6 flex flex-wrap gap-3">
-            {user?.permissions.length ? (
-              user.permissions.map((permission) => (
+            {permissions.length ? (
+              permissions.map((permission) => (
                 <span
                   key={permission}
                   className="rounded-full bg-secondary-container px-4 py-2 text-sm font-bold text-on-secondary-container"
@@ -57,7 +67,7 @@ export function Settings() {
             )}
           </div>
 
-          {user?.permissions.includes("users:read") ? (
+          {permissions.includes("users:read") ? (
             <div className="mt-8 rounded-2xl bg-surface-container-low p-5">
               <h3 className="font-headline text-lg font-extrabold text-on-background">Admin tools</h3>
               <p className="mt-2 text-sm text-on-surface-variant">
