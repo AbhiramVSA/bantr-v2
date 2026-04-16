@@ -16,8 +16,8 @@ export function Landing() {
 
   return (
     <div className="bg-background font-body text-on-surface overflow-x-hidden">
-      <header className="w-full py-4 px-8 sticky top-0 z-50 bg-[#d5ebff] dark:bg-slate-800 mb-8 shadow-[0_12px_40px_rgba(0,75,227,0.06)]">
-        <nav className="flex justify-between items-center max-w-[1440px] mx-auto px-10">
+      <header className="sticky top-0 z-50 px-4 pt-4 md:px-6">
+        <nav className="flex justify-between items-center max-w-[1440px] mx-auto rounded-full bg-[#d5ebff] px-6 py-4 shadow-[0_12px_40px_rgba(0,75,227,0.06)] md:px-10">
           <div className="text-3xl font-black text-[#004be3] dark:text-[#00a6ef] rotate-[-1.5deg] font-headline tracking-tight">
             Bantr
           </div>
@@ -52,21 +52,23 @@ export function Landing() {
       </header>
 
       <main>
-        <section className="relative px-6 pt-12 pb-24 md:pt-20 md:pb-32 overflow-hidden bg-gradient-to-br from-primary to-primary-container rounded-b-[4rem] mb-16">
-          <PageContainer className="grid lg:grid-cols-2 gap-12 items-center relative z-10">
-            <div className="space-y-8">
+        <section className="px-4 pb-6 pt-4 md:px-6 md:pb-10">
+          <div className="relative mx-auto max-w-[1440px] overflow-hidden rounded-[3.5rem] bg-gradient-to-br from-primary via-primary to-primary-container px-8 pb-16 pt-14 shadow-[0_20px_60px_rgba(0,75,227,0.12)] md:px-14 md:pb-20 md:pt-16 lg:px-20">
+            <div className="absolute inset-x-0 top-0 h-24 bg-white/6" />
+            <PageContainer className="relative z-10 grid items-center gap-14 lg:grid-cols-[minmax(0,1.02fr)_minmax(420px,0.92fr)]">
+            <div className="max-w-[40rem] space-y-7">
               <div className="inline-block px-4 py-2 bg-secondary-container text-on-secondary-fixed rounded-full font-bold text-sm tracking-wider uppercase">
                 Master the Mic
               </div>
-              <h1 className="text-5xl md:text-7xl font-headline font-extrabold text-on-primary leading-tight -tracking-[0.02em]">
+              <h1 className="max-w-[12ch] text-5xl font-headline font-extrabold leading-[0.94] -tracking-[0.03em] text-on-primary md:text-6xl xl:text-7xl">
                 Own the <span className="text-secondary-fixed">Argument.</span>
                 <br />
                 Win the Room.
               </h1>
-              <p className="text-xl text-on-primary/80 max-w-lg leading-relaxed">
+              <p className="max-w-[31rem] text-lg leading-relaxed text-on-primary/82 md:text-xl">
                 The world&apos;s first AI-powered voice debate lab. Sharpen your rhetoric, master public speaking, and climb the leaderboard in real-time vocal combat.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 pt-4">
+              <div className="flex flex-col gap-4 pt-2 sm:flex-row">
                 <Link
                   to="/auth"
                   className="bg-secondary-fixed text-on-secondary-fixed px-8 py-4 rounded-full font-headline font-extrabold text-lg shadow-xl hover:scale-105 transition-all active:scale-95 flex items-center justify-center gap-2"
@@ -83,8 +85,9 @@ export function Landing() {
               </div>
             </div>
 
-            <div className="relative">
-              <div className="bg-surface-container-lowest p-8 rounded-xl rotated-container-right sticker-shadow border-[3px] border-secondary-fixed relative z-20">
+            <div className="relative mx-auto w-full max-w-[34rem] lg:mr-0">
+              <div className="absolute inset-0 translate-x-6 translate-y-6 rounded-[2rem] bg-white/8 blur-2xl" />
+              <div className="bg-surface-container-lowest p-7 md:p-8 rounded-[2rem] rotated-container-right sticker-shadow border-[3px] border-secondary-fixed relative z-20">
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full bg-tertiary-container overflow-hidden">
@@ -130,19 +133,20 @@ export function Landing() {
                   </div>
                 </div>
               </div>
-              <div className="absolute -top-10 -right-10 w-32 h-32 bg-tertiary-fixed rounded-full opacity-20 blur-3xl" />
-              <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-secondary-fixed rounded-full opacity-20 blur-3xl" />
+              <div className="absolute -top-8 -right-4 h-32 w-32 rounded-full bg-tertiary-fixed opacity-20 blur-3xl" />
+              <div className="absolute -bottom-10 -left-8 h-40 w-40 rounded-full bg-secondary-fixed opacity-20 blur-3xl" />
             </div>
-          </PageContainer>
+            </PageContainer>
+          </div>
         </section>
 
-        <section id="features" className="max-w-[1440px] mx-auto px-6 py-24">
-          <div className="flex flex-col items-center mb-16 space-y-4">
+        <section id="features" className="max-w-[1440px] mx-auto px-6 py-28">
+          <div className="mb-16 flex flex-col items-center space-y-4 md:mb-20">
             <h2 className="text-4xl md:text-5xl font-headline font-black text-center text-on-surface">The Lab for Modern Rhetoric</h2>
             <div className="w-32 h-2 bg-tertiary-fixed rounded-full" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-surface-container-lowest p-10 rounded-xl sticker-shadow md:col-span-2 border-l-8 border-primary flex flex-col md:flex-row gap-8 items-center">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+            <div className="bg-surface-container-lowest p-10 rounded-xl sticker-shadow md:col-span-2 border-l-8 border-primary flex flex-col md:flex-row gap-8 items-center min-h-[22rem]">
               <div className="flex-1 space-y-4">
                 <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
                   <span className="material-symbols-outlined text-primary text-3xl">mic_none</span>
@@ -161,7 +165,7 @@ export function Landing() {
                 <div className="absolute inset-0 bg-primary/20" />
               </div>
             </div>
-            <div className="bg-tertiary-container p-10 rounded-xl sticker-shadow rotated-container-right flex flex-col justify-between">
+            <div className="bg-tertiary-container p-10 rounded-xl sticker-shadow rotated-container-right flex flex-col justify-between min-h-[22rem]">
               <div className="space-y-4">
                 <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                   <span className="material-symbols-outlined text-on-tertiary-container text-3xl">emoji_events</span>
@@ -176,9 +180,9 @@ export function Landing() {
           </div>
         </section>
 
-        <section id="testimonials" className="py-24 bg-surface-container-low overflow-hidden">
+        <section id="testimonials" className="overflow-hidden bg-surface-container-low py-28">
           <PageContainer className="px-6">
-            <div className="mb-16">
+            <div className="mb-16 md:mb-20">
               <h2 className="text-4xl font-headline font-black mb-2">Voices of Bantr</h2>
               <p className="text-primary font-bold uppercase tracking-widest text-sm">Proof in the pitch</p>
             </div>
@@ -222,8 +226,8 @@ export function Landing() {
           </PageContainer>
         </section>
 
-        <section id="cta" className="max-w-[1200px] mx-auto px-6 py-24 text-center">
-          <div className="bg-primary p-16 rounded-xl sticker-shadow relative overflow-hidden">
+        <section id="cta" className="mx-auto max-w-[1200px] px-6 py-28 text-center">
+          <div className="relative overflow-hidden rounded-[2.5rem] bg-primary px-8 py-14 sticker-shadow md:px-14 md:py-16">
             <div className="absolute top-0 right-0 w-64 h-64 bg-secondary-fixed/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-tertiary-fixed/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
             <h2 className="text-4xl md:text-6xl font-headline font-black text-on-primary mb-8 relative z-10">Ready to find your voice?</h2>
@@ -245,8 +249,8 @@ export function Landing() {
         </section>
       </main>
 
-      <footer className="bg-on-background pt-24 pb-12 text-surface-container-lowest px-8">
-        <PageContainer className="grid grid-cols-1 md:grid-cols-4 gap-12 border-b border-surface-variant/10 pb-16">
+      <footer className="bg-on-background px-8 pb-12 pt-24 text-surface-container-lowest">
+        <PageContainer className="grid grid-cols-1 gap-12 border-b border-surface-variant/10 pb-16 md:grid-cols-4">
           <div className="space-y-6">
             <div className="text-4xl font-headline font-black text-[#00a6ef] rotate-[-1.5deg]">Bantr</div>
             <p className="text-surface-variant/60 leading-relaxed">
