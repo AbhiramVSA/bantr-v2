@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import APIRouter, Depends, Request, Response
+from authlib.integrations.base_client.errors import MismatchingStateError
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy.exc import IntegrityError
@@ -40,6 +41,12 @@ async def google_login(request: Request):
 async def google_callback(request: Request, db: AsyncSession = Depends(get_db)):
     try:
         token = await oauth.google.authorize_access_token(request)
+    except MismatchingStateError:
+        logger.warning("OAuth callback failed due to mismatching state")
+        return RedirectResponse(
+            url=f"{settings.FRONTEND_URL}?error=oauth_state_mismatch",
+            status_code=302,
+        )
     except Exception:
         logger.exception("OAuth callback failed")
         return RedirectResponse(

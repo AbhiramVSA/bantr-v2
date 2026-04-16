@@ -1,5 +1,6 @@
 import logging
 import asyncio
+import socket
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Request
@@ -10,7 +11,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from asyncpg import UniqueViolationError
 from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -21,6 +22,7 @@ from app.core.config import settings
 from app.core.errors import AppError
 from app.core.logging import setup_logging
 from app.db.session import AsyncSessionLocal, engine
+from app.services.debate_reconciler import reconcile_stale_debates
 from app.services.rbac_service import ensure_default_roles_and_permissions
 
 logger = logging.getLogger(__name__)
@@ -28,6 +30,19 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    async def _reconcile_loop() -> None:
+        while True:
+            try:
+                async with AsyncSessionLocal() as session:
+                    await reconcile_stale_debates(
+                        session,
+                        stale_after_seconds=settings.DEBATE_STALE_AFTER_SECONDS,
+                    )
+                    await session.commit()
+            except Exception:
+                logger.exception("Debate reconciler loop failed")
+            await asyncio.sleep(settings.DEBATE_RECONCILE_INTERVAL_SECONDS)
+
     setup_logging()
     # Warm DB pool
     async with engine.begin() as conn:
@@ -38,7 +53,22 @@ async def lifespan(app: FastAPI):
         await ensure_default_roles_and_permissions(session)
         await session.commit()
     logger.info("Default roles and permissions seeded")
-    yield
+
+    reconcile_task = asyncio.create_task(_reconcile_loop())
+    logger.info(
+        "Debate reconciler started (interval=%ss, stale_after=%ss)",
+        settings.DEBATE_RECONCILE_INTERVAL_SECONDS,
+        settings.DEBATE_STALE_AFTER_SECONDS,
+    )
+    try:
+        yield
+    finally:
+        reconcile_task.cancel()
+        try:
+            await reconcile_task
+        except asyncio.CancelledError:
+            pass
+
     await engine.dispose()
     logger.info("App shutdown complete")
 
@@ -97,6 +127,36 @@ async def db_integrity_handler(request: Request, exc: IntegrityError):
             "error": {
                 "code": "INTERNAL_ERROR",
                 "message": "An unexpected error occurred",
+                "details": {},
+            }
+        },
+    )
+
+
+@app.exception_handler(OperationalError)
+async def db_operational_handler(request: Request, exc: OperationalError):
+    logger.exception("Database operational error")
+    return JSONResponse(
+        status_code=503,
+        content={
+            "error": {
+                "code": "DATABASE_UNAVAILABLE",
+                "message": "Database is temporarily unavailable",
+                "details": {},
+            }
+        },
+    )
+
+
+@app.exception_handler(socket.gaierror)
+async def dns_resolution_handler(request: Request, exc: socket.gaierror):
+    logger.exception("DNS resolution failure")
+    return JSONResponse(
+        status_code=503,
+        content={
+            "error": {
+                "code": "NETWORK_DNS_ERROR",
+                "message": "Temporary network DNS resolution failure",
                 "details": {},
             }
         },
@@ -205,7 +265,12 @@ async def security_headers(request: Request, call_next):
 
 
 # Session middleware (required by Authlib for OAuth state)
-app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.SECRET_KEY,
+    same_site=settings.SESSION_COOKIE_SAMESITE,
+    https_only=settings.SESSION_COOKIE_SECURE,
+)
 
 # CORS
 app.add_middleware(

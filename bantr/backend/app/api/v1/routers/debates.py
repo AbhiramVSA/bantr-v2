@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
-from app.core.errors import NotFoundError
+from app.core.errors import ConflictError, NotFoundError
 from app.crud.debate import (
     get_user_debate,
     get_user_debate_for_update,
@@ -17,6 +17,7 @@ from app.schemas.analysis import AnalysisRead
 from app.schemas.debate import (
     DebateCreate,
     DebateEndResponse,
+    DebateStatus,
     DebateRead,
     DebateStartResponse,
 )
@@ -25,6 +26,7 @@ from app.services.analysis_service import analyze_debate
 from app.services.debate_service import create_new_debate, end_debate, start_debate
 
 router = APIRouter()
+TERMINAL_STATUSES = {"completed", "failed"}
 
 
 def _get_debate_or_404(debate):
@@ -45,7 +47,7 @@ async def create_debate_endpoint(
 
 @router.get("", response_model=list[DebateRead])
 async def list_debates(
-    status: str | None = None,
+    status: DebateStatus | None = None,
     skip: int = 0,
     limit: int = 20,
     user: User = Depends(get_current_user),
@@ -74,7 +76,12 @@ async def start_debate_endpoint(
         await get_user_debate_for_update(db, debate_id, user.id)
     )
     token, url = await start_debate(db, debate, user.id)
-    return DebateStartResponse(status="active", livekit_token=token, livekit_url=url)
+    return DebateStartResponse(
+        status="active",
+        livekit_token=token,
+        livekit_url=url,
+        livekit_room_name=debate.livekit_room_name,
+    )
 
 
 @router.post("/{debate_id}/end", response_model=DebateEndResponse)
@@ -87,7 +94,7 @@ async def end_debate_endpoint(
         await get_user_debate_for_update(db, debate_id, user.id)
     )
     await end_debate(db, debate)
-    return DebateEndResponse(status="ending")
+    return DebateEndResponse(status=debate.status)
 
 
 @router.delete("/{debate_id}")
@@ -97,6 +104,11 @@ async def delete_debate_endpoint(
     db: AsyncSession = Depends(get_db),
 ):
     debate = _get_debate_or_404(await get_user_debate(db, debate_id, user.id))
+    if debate.status not in TERMINAL_STATUSES:
+        raise ConflictError(
+            "DEBATE_NOT_TERMINAL",
+            "Debate can only be deleted after reaching a terminal state",
+        )
     await db.delete(debate)
     await db.flush()
     return {"status": "deleted", "debate_id": str(debate_id)}

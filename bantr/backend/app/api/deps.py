@@ -1,5 +1,6 @@
 import hmac
 import uuid
+from urllib.parse import urlparse
 
 import jwt
 from fastapi import Depends, Request
@@ -57,6 +58,24 @@ def require_permissions(*required: str):
 async def validate_csrf(request: Request) -> None:
     if request.method in ("GET", "HEAD", "OPTIONS"):
         return
+
+    # Allow same-origin unsafe requests (e.g. Swagger UI on the API origin).
+    # CSRF risk applies to cross-origin requests; same-origin requests are not forgeable
+    # by third-party sites.
+    origin = request.headers.get("origin")
+    referer = request.headers.get("referer")
+    request_origin = f"{request.url.scheme}://{request.url.netloc}"
+
+    def _matches_request_origin(value: str | None) -> bool:
+        if not value:
+            return False
+        parsed = urlparse(value)
+        source = f"{parsed.scheme}://{parsed.netloc}" if parsed.scheme and parsed.netloc else ""
+        return source == request_origin
+
+    if _matches_request_origin(origin) or _matches_request_origin(referer):
+        return
+
     cookie_token = request.cookies.get("csrf_token")
     header_token = request.headers.get("X-CSRF-Token")
     if not cookie_token or not header_token:

@@ -1,7 +1,10 @@
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+
+DebateStatus = Literal["pending", "starting", "active", "ending", "completed", "failed"]
 
 
 class DebateCreate(BaseModel):
@@ -20,7 +23,7 @@ class DebateRead(BaseModel):
     topic: str
     agent_prompt: str
     agent_voice_id: str
-    status: str
+    status: DebateStatus
     livekit_room_name: str
     started_at: datetime | None
     ended_at: datetime | None
@@ -28,10 +31,11 @@ class DebateRead(BaseModel):
 
 
 class DebateStartResponse(BaseModel):
-    status: str
+    status: DebateStatus
     livekit_token: str
     livekit_url: str
+    livekit_room_name: str
 
 
 class DebateEndResponse(BaseModel):
-    status: str
+    status: DebateStatus
