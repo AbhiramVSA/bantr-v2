@@ -22,11 +22,9 @@ from livekit.agents import (
 from livekit.agents.voice import room_io
 from livekit.plugins import elevenlabs, silero
 from livekit.rtc._proto import room_pb2
-from pydantic_ai import Agent as PydanticAgent
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-from app.prompts import WORKER_PLANNER_INSTRUCTIONS, build_worker_planner_prompt
 from app.schemas.llm import WorkerPlanOutput
 
 load_dotenv("../.env")
@@ -39,6 +37,7 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
 )
 logger = logging.getLogger(__name__)
+_PRELOADED_VAD = silero.VAD.load()
 
 # Keep worker availability permissive for single-user demo reliability.
 server = AgentServer(
@@ -53,8 +52,6 @@ REQUIRED_WORKER_ENV = (
     "DEEPGRAM_API_KEY",
     "ELEVENLABS_API_KEY",
 )
-WORKER_PLAN_RETRIES = 2
-WORKER_PLAN_TIMEOUT_SECONDS = 45
 JOB_ACCEPT_RETRIES = 3
 JOB_ACCEPT_BACKOFF_SECONDS = 0.5
 _worker_connect_args: dict = {}
@@ -62,9 +59,6 @@ if settings.DATABASE_HOST not in ("localhost", "127.0.0.1"):
     _worker_connect_args["ssl"] = _ssl.create_default_context()
     _worker_connect_args["statement_cache_size"] = 0
     _worker_connect_args["prepared_statement_cache_size"] = 0
-
-_worker_planner_agent: PydanticAgent[WorkerPlanOutput] | None = None
-
 
 @asynccontextmanager
 async def _worker_db_session():
@@ -86,21 +80,6 @@ async def _worker_db_session():
             yield session
     finally:
         await engine.dispose()
-
-
-def _get_worker_planner_agent() -> PydanticAgent[WorkerPlanOutput]:
-    global _worker_planner_agent
-    if _worker_planner_agent is None:
-        _worker_planner_agent = PydanticAgent(
-            model=settings.OPENAI_COMPLEX_MODEL,
-            output_type=WorkerPlanOutput,
-            instructions=WORKER_PLANNER_INSTRUCTIONS,
-            retries=WORKER_PLAN_RETRIES,
-            output_retries=WORKER_PLAN_RETRIES,
-            defer_model_check=True,
-        )
-    return _worker_planner_agent
-
 
 async def _on_job_request(job_request: JobRequest) -> None:
     logger.info(
@@ -182,10 +161,16 @@ async def debate_session(ctx: JobContext):
         return
 
     logger.info("Starting debate session for debate_id=%s", debate_id)
+    plan_started_at = asyncio.get_running_loop().time()
     plan = await _build_worker_plan(
         title=debate_config["title"],
         topic=debate_config["topic"],
         agent_prompt=debate_config["agent_prompt"],
+    )
+    logger.info(
+        "Worker plan ready for debate_id=%s in %.2fs",
+        debate_id,
+        asyncio.get_running_loop().time() - plan_started_at,
     )
     requested_voice_id = debate_config["agent_voice_id"]
     if requested_voice_id:
@@ -203,7 +188,7 @@ async def debate_session(ctx: JobContext):
         stt="deepgram/nova-3:multi",
         llm=settings.LIVEKIT_LLM_MODEL,
         tts=elevenlabs_tts,
-        vad=silero.VAD.load(),
+        vad=_PRELOADED_VAD,
         use_tts_aligned_transcript=True,
         turn_handling={
             "turn_detection": "vad",
@@ -232,7 +217,7 @@ async def debate_session(ctx: JobContext):
             text_input=True,
             audio_output=True,
             text_output=room_io.TextOutputOptions(sync_transcription=True),
-            close_on_disconnect=True,
+            close_on_disconnect=False,
         ),
     )
     try:
@@ -291,28 +276,16 @@ async def _build_worker_plan(
     topic: str,
     agent_prompt: str,
 ) -> WorkerPlanOutput:
-    default_plan = WorkerPlanOutput(
-        refined_system_prompt=agent_prompt,
-        opening_statement=(
-            "Begin the debate. State your position clearly, use concrete evidence, "
-            "and challenge assumptions respectfully."
-        ),
+    opening_statement = (
+        f"Open the debate on '{title}'. "
+        f"Resolution: {topic}. "
+        "State your position immediately, make one strong evidence-backed claim, "
+        "and end with a direct challenge to the opposing side."
     )
-    try:
-        run_result = await asyncio.wait_for(
-            _get_worker_planner_agent().run(
-                build_worker_planner_prompt(
-                    title=title,
-                    topic=topic,
-                    agent_prompt=agent_prompt,
-                )
-            ),
-            timeout=WORKER_PLAN_TIMEOUT_SECONDS,
-        )
-    except Exception:
-        logger.exception("Worker planner agent failed; using fallback plan")
-        return default_plan
-    return run_result.output
+    return WorkerPlanOutput(
+        refined_system_prompt=agent_prompt,
+        opening_statement=opening_statement,
+    )
 
 
 def _extract_text_content(message) -> str:

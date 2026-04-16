@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_COMPLEX_MODEL: str = "openai:gpt-5.1"
     OPENAI_SIMPLE_MODEL: str = "openai:gpt-5-mini"
-    LIVEKIT_LLM_MODEL: str = "openai/gpt-5.1"
+    LIVEKIT_LLM_MODEL: str = "openai/gpt-5-mini"
     ELEVENLABS_TTS_MODEL: str = "eleven_flash_v2_5"
     OPENAI_EMBED_MODEL: str = "text-embedding-3-small"
     DEBATE_STALE_AFTER_SECONDS: int = 180
