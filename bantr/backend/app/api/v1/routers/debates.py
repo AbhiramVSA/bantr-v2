@@ -22,7 +22,7 @@ from app.schemas.debate import (
     DebateStartResponse,
 )
 from app.schemas.transcript import TranscriptRead
-from app.services.analysis_service import analyze_debate
+from app.services.analysis_service import analyze_debate, schedule_embedding
 from app.services.debate_service import create_new_debate, end_debate, start_debate
 
 router = APIRouter()
@@ -42,6 +42,7 @@ async def create_debate_endpoint(
     db: AsyncSession = Depends(get_db),
 ):
     debate = await create_new_debate(db, user.id, body)
+    await db.commit()
     return debate
 
 
@@ -76,6 +77,7 @@ async def start_debate_endpoint(
         await get_user_debate_for_update(db, debate_id, user.id)
     )
     token, url = await start_debate(db, debate, user.id)
+    await db.commit()
     return DebateStartResponse(
         status="active",
         livekit_token=token,
@@ -94,6 +96,7 @@ async def end_debate_endpoint(
         await get_user_debate_for_update(db, debate_id, user.id)
     )
     await end_debate(db, debate)
+    await db.commit()
     return DebateEndResponse(status=debate.status)
 
 
@@ -111,6 +114,7 @@ async def delete_debate_endpoint(
         )
     await db.delete(debate)
     await db.flush()
+    await db.commit()
     return {"status": "deleted", "debate_id": str(debate_id)}
 
 
@@ -137,6 +141,8 @@ async def analyze_debate_endpoint(
         await get_user_debate_for_update(db, debate_id, user.id)
     )
     analysis = await analyze_debate(db, debate)
+    await db.commit()
+    schedule_embedding(debate.id)
     return analysis
 
 

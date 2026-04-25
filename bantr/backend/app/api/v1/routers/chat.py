@@ -24,6 +24,7 @@ async def send_chat_message(
     db: AsyncSession = Depends(get_db),
 ):
     assistant_msg, context_debates = await handle_chat_message(db, user.id, body.message)
+    await db.commit()
     return ChatResponse(
         message=ChatMessageRead(
             id=assistant_msg.id,
@@ -55,4 +56,5 @@ async def clear_chat_history(
     db: AsyncSession = Depends(get_db),
 ):
     await delete_user_chat_history(db, user.id)
+    await db.commit()
     return {"status": "cleared"}

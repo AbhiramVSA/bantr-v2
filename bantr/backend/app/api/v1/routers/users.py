@@ -65,4 +65,5 @@ async def delete_user(
         raise NotFoundError("USER_NOT_FOUND", "User not found")
     await db.delete(target)
     await db.flush()
+    await db.commit()
     return {"status": "deleted", "user_id": str(user_id)}

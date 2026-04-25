@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
@@ -70,7 +71,7 @@ def test_debate_route_flow_start_end_transcript_analyze(monkeypatch):
     )
 
     async def fake_get_db():
-        yield SimpleNamespace()
+        yield SimpleNamespace(commit=AsyncMock(), flush=AsyncMock(), delete=AsyncMock())
 
     async def fake_get_current_user():
         return user
@@ -115,6 +116,7 @@ def test_debate_route_flow_start_end_transcript_analyze(monkeypatch):
     monkeypatch.setattr(debates_router, "get_transcript_by_debate_id", fake_get_transcript)
     monkeypatch.setattr(debates_router, "analyze_debate", fake_analyze_debate)
     monkeypatch.setattr(debates_router, "get_analysis_by_debate_id", fake_get_analysis)
+    monkeypatch.setattr(debates_router, "schedule_embedding", lambda _debate_id: None)
 
     with TestClient(app) as client:
         start_res = client.post(f"{settings.API_V1_STR}/debates/{debate_id}/start")
@@ -151,7 +153,7 @@ def test_delete_rejects_non_terminal_debate(monkeypatch):
     debate = SimpleNamespace(id=debate_id, user_id=user_id, status="active")
 
     async def fake_get_db():
-        yield SimpleNamespace()
+        yield SimpleNamespace(commit=AsyncMock(), flush=AsyncMock(), delete=AsyncMock())
 
     async def fake_get_current_user():
         return user

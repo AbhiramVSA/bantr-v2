@@ -92,6 +92,7 @@ async def google_callback(request: Request, db: AsyncSession = Depends(get_db)):
 
     redirect = RedirectResponse(url=settings.FRONTEND_URL, status_code=302)
     await issue_user_tokens(db, user, request, redirect, event="login_oauth")
+    await db.commit()
     return redirect
 
 
@@ -107,6 +108,7 @@ async def register(
         db, email=body.email, username=body.username, password=body.password
     )
     await issue_user_tokens(db, user, request, response, event="register")
+    await db.commit()
     return {"status": "registered", "user_id": str(user.id)}
 
 
@@ -120,6 +122,7 @@ async def login(
 ):
     user = await authenticate_user(db, request, email=body.email, password=body.password)
     await issue_user_tokens(db, user, request, response, event="login_password")
+    await db.commit()
     return {"status": "ok", "user_id": str(user.id)}
 
 
@@ -147,6 +150,7 @@ async def refresh_token(
     db: AsyncSession = Depends(get_db),
 ):
     user = await refresh_user_session(db, request, response)
+    await db.commit()
     return {"status": "ok", "user_id": str(user.id)}
 
 
@@ -157,4 +161,5 @@ async def logout(
     db: AsyncSession = Depends(get_db),
 ):
     await logout_user_session(db, request, response)
+    await db.commit()
     return {"status": "logged_out"}

@@ -64,7 +64,7 @@ def poll_transcript(
 
 
 def main() -> None:
-    api_root = os.getenv("DEMO_API_ROOT", "http://localhost:8000")
+    api_root = os.getenv("DEMO_API_ROOT", "http://localhost:8003")
     base_url = f"{api_root.rstrip('/')}/api/v1"
 
     with httpx.Client(timeout=30.0, follow_redirects=True) as client:

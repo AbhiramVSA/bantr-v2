@@ -37,7 +37,6 @@ class Settings(BaseSettings):
     BOOTSTRAP_ADMIN_EMAILS: str = ""
     LOGFIRE_TOKEN: str = ""
     LOGFIRE_ENVIRONMENT: str = "development"
-
     FRONTEND_URL: str = "http://localhost:5173"
     ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
     MAX_REQUEST_BODY_SIZE: int = 1_048_576
@@ -52,9 +51,11 @@ class Settings(BaseSettings):
     LIVEKIT_AGENT_NAME: str = "bantr-debate"
     LIVEKIT_FORCE_RELAY: bool = True
     LIVEKIT_CONNECT_TIMEOUT_SECONDS: int = 15
+    LIVEKIT_RELAY_FALLBACK_ENABLED: bool = True
 
     # OpenAI (analysis + embeddings + chat)
     OPENAI_API_KEY: str = ""
+    OPENAI_ANALYSIS_MODEL: str = "openai:gpt-5-mini"
     OPENAI_COMPLEX_MODEL: str = "openai:gpt-5.1"
     OPENAI_SIMPLE_MODEL: str = "openai:gpt-5-mini"
     LIVEKIT_LLM_MODEL: str = "openai/gpt-5-mini"
@@ -93,7 +94,7 @@ class Settings(BaseSettings):
     def set_google_redirect_uri(self) -> "Settings":
         if not self.GOOGLE_REDIRECT_URI and self.MODE == "development":
             self.GOOGLE_REDIRECT_URI = (
-                "http://localhost:8000/api/v1/auth/google/callback"
+                "http://localhost:8003/api/v1/auth/google/callback"
             )
         return self
 

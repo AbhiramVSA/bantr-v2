@@ -109,24 +109,54 @@ async def _on_job_request(job_request: JobRequest) -> None:
             await asyncio.sleep(JOB_ACCEPT_BACKOFF_SECONDS * attempt)
 
 
+async def _connect_to_room(ctx: JobContext) -> None:
+    connect_timeout = settings.LIVEKIT_CONNECT_TIMEOUT_SECONDS
+
+    async def _attempt_connect(*, relay_only: bool) -> None:
+        connect_kwargs = {}
+        transport_label = "default ICE transport"
+        if relay_only:
+            connect_kwargs["rtc_config"] = rtc.RtcConfiguration(
+                ice_transport_type=room_pb2.IceTransportType.TRANSPORT_RELAY
+            )
+            transport_label = "relay-only ICE transport"
+
+        logger.info(
+            "Connecting worker to room=%s with %s (timeout=%ss)",
+            ctx.room.name,
+            transport_label,
+            connect_timeout,
+        )
+        await asyncio.wait_for(ctx.connect(**connect_kwargs), timeout=connect_timeout)
+        logger.info(
+            "Worker connected to room=%s using %s",
+            ctx.room.name,
+            transport_label,
+        )
+
+    if settings.LIVEKIT_FORCE_RELAY:
+        try:
+            await _attempt_connect(relay_only=True)
+            return
+        except Exception:
+            logger.warning(
+                "Relay-only worker connect failed for room=%s; fallback_enabled=%s",
+                ctx.room.name,
+                settings.LIVEKIT_RELAY_FALLBACK_ENABLED,
+                exc_info=True,
+            )
+            if not settings.LIVEKIT_RELAY_FALLBACK_ENABLED:
+                raise
+            logger.info("Retrying worker connect for room=%s with default ICE", ctx.room.name)
+
+    await _attempt_connect(relay_only=False)
+
+
 @server.rtc_session(agent_name=settings.LIVEKIT_AGENT_NAME, on_request=_on_job_request)
 async def debate_session(ctx: JobContext):
     logger.info("Debate session entrypoint invoked for room=%s", ctx.room.name)
-    # Connect immediately to satisfy LiveKit job lifecycle deadlines.
-    connect_kwargs = {}
-    if settings.LIVEKIT_FORCE_RELAY:
-        connect_kwargs["rtc_config"] = rtc.RtcConfiguration(
-            ice_transport_type=room_pb2.IceTransportType.TRANSPORT_RELAY
-        )
-        logger.info("Connecting with relay-only ICE transport")
-    else:
-        logger.info("Connecting with default ICE transport")
-
     try:
-        await asyncio.wait_for(
-            ctx.connect(**connect_kwargs),
-            timeout=settings.LIVEKIT_CONNECT_TIMEOUT_SECONDS,
-        )
+        await _connect_to_room(ctx)
     except Exception:
         logger.exception("Failed to connect worker to room")
         ctx.shutdown("rtc connect failed")
@@ -209,6 +239,7 @@ async def debate_session(ctx: JobContext):
     )
     agent = Agent(instructions=plan.refined_system_prompt)
 
+    logger.info("Starting LiveKit agent session for debate_id=%s", debate_id)
     await session.start(
         agent=agent,
         room=ctx.room,
@@ -220,11 +251,14 @@ async def debate_session(ctx: JobContext):
             close_on_disconnect=False,
         ),
     )
+    logger.info("LiveKit agent session started for debate_id=%s", debate_id)
     try:
+        logger.info("Generating opening reply for debate_id=%s", debate_id)
         await session.generate_reply(
             instructions=plan.opening_statement,
             allow_interruptions=True,
         )
+        logger.info("Opening reply generated for debate_id=%s", debate_id)
     except Exception:
         logger.exception("Failed to generate opening reply")
 

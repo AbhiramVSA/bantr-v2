@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_ROLES_PERMISSIONS = {
     "admin": ["users:read", "users:write", "users:delete", "roles:manage"],
-    "user": ["users:read"],
+    "user": [],
 }
 
 
@@ -60,6 +60,26 @@ async def ensure_default_roles_and_permissions(db: AsyncSession) -> None:
                     )
                 )
                 logger.info("Linked permission '%s' to role '%s'", perm_name, role_name)
+
+        stale_permissions = existing - set(perm_names)
+        if stale_permissions:
+            stale_permission_ids = [
+                permissions_by_name[perm_name].id
+                for perm_name in stale_permissions
+                if perm_name in permissions_by_name
+            ]
+            if stale_permission_ids:
+                await db.execute(
+                    role_permissions.delete().where(
+                        role_permissions.c.role_id == role.id,
+                        role_permissions.c.permission_id.in_(stale_permission_ids),
+                    )
+                )
+                logger.info(
+                    "Removed stale permissions %s from role '%s'",
+                    sorted(stale_permissions),
+                    role_name,
+                )
 
     # 3. Promote bootstrap admin emails
     if settings.bootstrap_admin_emails_list:

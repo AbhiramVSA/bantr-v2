@@ -7,6 +7,9 @@ Evaluation rules:
 3. Avoid hallucinated quotes; every quote must exist in transcript text.
 4. Prefer specific, actionable feedback over generic advice.
 5. If evidence is insufficient, reflect uncertainty in reasoning text.
+6. Keep prose concise and dashboard-ready; avoid filler and repetition.
+7. Only include fallacies when there is enough evidence in the quoted text.
+8. Prefer 2-4 high-signal key moments and 2-4 concrete improvement areas.
 """
 
 
@@ -34,7 +37,9 @@ Planner rules:
 
 def build_analysis_user_prompt(transcript_text: str) -> str:
     return (
-        "Analyze the following debate transcript.\n\n"
+        "Analyze the following debate transcript and produce a concise coaching dashboard payload.\n"
+        "Score both sides on a 1-10 scale. Use direct evidence from the transcript only.\n"
+        "Treat missing support as uncertainty rather than inventing detail.\n\n"
         "Transcript:\n"
         f"{transcript_text}\n"
     )

@@ -167,18 +167,21 @@ async def authenticate_user(
             db, user_id=None, event="login_failed",
             ip_address=ip, user_agent=ua, detail=f"Unknown email: {email}",
         )
+        await db.commit()
         raise AuthError("INVALID_CREDENTIALS", "Invalid email or password")
     if not await verify_password_async(password, user.hashed_password):
         await create_audit_log(
             db, user_id=user.id, event="login_failed",
             ip_address=ip, user_agent=ua, detail="Wrong password",
         )
+        await db.commit()
         raise AuthError("INVALID_CREDENTIALS", "Invalid email or password")
     if not user.is_active:
         await create_audit_log(
             db, user_id=user.id, event="login_failed",
             ip_address=ip, user_agent=ua, detail="Account deactivated",
         )
+        await db.commit()
         raise AuthError("USER_INACTIVE", "Account is deactivated")
     return user
 
@@ -248,6 +251,7 @@ async def refresh_user_session(
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent"),
         )
+        await db.commit()
         raise AuthError("TOKEN_REUSED", "Refresh token reuse detected")
 
     if token_record.expires_at < now:
