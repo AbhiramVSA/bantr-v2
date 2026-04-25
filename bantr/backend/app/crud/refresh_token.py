@@ -41,12 +41,10 @@ async def create_refresh_token(
     return token
 
 
-async def revoke_active_tokens_for_user(
-    db: AsyncSession, user_id: uuid.UUID
-) -> None:
+async def revoke_active_tokens_for_user(db: AsyncSession, user_id: uuid.UUID) -> None:
     await db.execute(
         update(RefreshToken)
-        .where(RefreshToken.user_id == user_id, RefreshToken.is_revoked == False)
+        .where(RefreshToken.user_id == user_id, RefreshToken.is_revoked.is_(False))
         .values(is_revoked=True, updated_at=func.now())
     )
     await db.flush()

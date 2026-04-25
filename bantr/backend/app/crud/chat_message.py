@@ -57,8 +57,6 @@ async def get_recent_chat_messages(
     return list(reversed(result.scalars().all()))
 
 
-async def delete_user_chat_history(
-    db: AsyncSession, user_id: uuid.UUID
-) -> None:
+async def delete_user_chat_history(db: AsyncSession, user_id: uuid.UUID) -> None:
     await db.execute(delete(ChatMessage).where(ChatMessage.user_id == user_id))
     await db.flush()

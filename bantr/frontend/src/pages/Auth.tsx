@@ -105,31 +105,34 @@ export function Auth() {
           <form className="w-full space-y-6" onSubmit={handleSubmit}>
             {mode === "register" ? (
               <div className="relative">
-                <div className="absolute -top-3 left-4 bg-surface-container-high px-3 py-0.5 rounded-full z-10 shadow-sm">
+                <label htmlFor="auth-username" className="absolute -top-3 left-4 bg-surface-container-high px-3 py-0.5 rounded-full z-10 shadow-sm">
                   <span className="text-[10px] font-black uppercase text-on-surface-variant tracking-tighter">Username</span>
-                </div>
-                <Input value={username} onChange={(event) => setUsername(event.target.value)} placeholder="bantrchamp" />
+                </label>
+                <Input id="auth-username" value={username} onChange={(event) => setUsername(event.target.value)} placeholder="bantrchamp" autoComplete="username" />
               </div>
             ) : null}
 
             <div className="relative">
-              <div className="absolute -top-3 left-4 bg-secondary-container px-3 py-0.5 rounded-full z-10 shadow-sm">
+              <label htmlFor="auth-email" className="absolute -top-3 left-4 bg-secondary-container px-3 py-0.5 rounded-full z-10 shadow-sm">
                 <span className="text-[10px] font-black uppercase text-on-secondary-container tracking-tighter">Email</span>
-              </div>
-              <Input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="your@voice.com" type="email" />
+              </label>
+              <Input id="auth-email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="your@voice.com" type="email" autoComplete="email" />
             </div>
 
             <div className="relative">
-              <div className="absolute -top-3 left-4 bg-surface-container-high px-3 py-0.5 rounded-full z-10 shadow-sm">
+              <label htmlFor="auth-password" className="absolute -top-3 left-4 bg-surface-container-high px-3 py-0.5 rounded-full z-10 shadow-sm">
                 <span className="text-[10px] font-black uppercase text-on-surface-variant tracking-tighter">Password</span>
-              </div>
+              </label>
               <Input
+                id="auth-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="••••••••"
                 type={showPassword ? "text" : "password"}
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
               />
               <button
+                aria-label={showPassword ? "Hide password" : "Show password"}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary"
                 type="button"
                 onClick={() => setShowPassword((current) => !current)}

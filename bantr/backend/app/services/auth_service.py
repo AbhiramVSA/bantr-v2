@@ -19,6 +19,8 @@ from app.crud.oauth_account import create_oauth_account, get_oauth_account
 from app.crud.permission import get_user_permission_names
 from app.crud.refresh_token import (
     create_refresh_token as create_refresh_token_record,
+)
+from app.crud.refresh_token import (
     get_refresh_token_by_hash,
     revoke_active_tokens_for_user,
 )
@@ -47,7 +49,9 @@ async def _get_role_name(db: AsyncSession, user: User) -> str:
         return user.role.name
     if user.role_id is not None:
         from sqlalchemy import select
+
         from app.models.role import Role
+
         result = await db.execute(select(Role).where(Role.id == user.role_id))
         role = result.scalars().first()
         if role:
@@ -118,6 +122,8 @@ async def find_or_create_oauth_user(
     )
     # Re-fetch to get role joinedload
     user = await get_user_by_id(db, user.id)
+    if not user:
+        raise AuthError("USER_NOT_FOUND", "Created user could not be reloaded")
     return user
 
 
@@ -147,6 +153,8 @@ async def register_user(
     )
     # Re-fetch to get role joinedload
     user = await get_user_by_id(db, user.id)
+    if not user:
+        raise AuthError("USER_NOT_FOUND", "Created user could not be reloaded")
     return user
 
 
@@ -164,22 +172,34 @@ async def authenticate_user(
     user = await get_user_by_email(db, email)
     if not user or not user.hashed_password:
         await create_audit_log(
-            db, user_id=None, event="login_failed",
-            ip_address=ip, user_agent=ua, detail=f"Unknown email: {email}",
+            db,
+            user_id=None,
+            event="login_failed",
+            ip_address=ip,
+            user_agent=ua,
+            detail=f"Unknown email: {email}",
         )
         await db.commit()
         raise AuthError("INVALID_CREDENTIALS", "Invalid email or password")
     if not await verify_password_async(password, user.hashed_password):
         await create_audit_log(
-            db, user_id=user.id, event="login_failed",
-            ip_address=ip, user_agent=ua, detail="Wrong password",
+            db,
+            user_id=user.id,
+            event="login_failed",
+            ip_address=ip,
+            user_agent=ua,
+            detail="Wrong password",
         )
         await db.commit()
         raise AuthError("INVALID_CREDENTIALS", "Invalid email or password")
     if not user.is_active:
         await create_audit_log(
-            db, user_id=user.id, event="login_failed",
-            ip_address=ip, user_agent=ua, detail="Account deactivated",
+            db,
+            user_id=user.id,
+            event="login_failed",
+            ip_address=ip,
+            user_agent=ua,
+            detail="Account deactivated",
         )
         await db.commit()
         raise AuthError("USER_INACTIVE", "Account is deactivated")

@@ -1,6 +1,7 @@
 import json
 import logging
 import sys
+from typing import Any, cast
 
 
 class JSONFormatter(logging.Formatter):
@@ -13,8 +14,9 @@ class JSONFormatter(logging.Formatter):
         }
         if record.exc_info:
             log_entry["exception"] = self.formatException(record.exc_info)
-        if hasattr(record, "extra_data"):
-            log_entry.update(record.extra_data)
+        extra_data = getattr(record, "extra_data", None)
+        if isinstance(extra_data, dict):
+            log_entry.update(cast(dict[str, Any], extra_data))
         return json.dumps(log_entry)
 
 

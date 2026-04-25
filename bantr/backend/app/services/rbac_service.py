@@ -9,7 +9,6 @@ from app.crud.role import create_role, get_role_by_name
 from app.crud.user import get_user_by_email
 from app.models.base import role_permissions
 from app.models.permission import Permission
-from app.models.role import Role
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +37,7 @@ async def ensure_default_roles_and_permissions(db: AsyncSession) -> None:
     for role_name, perm_names in DEFAULT_ROLES_PERMISSIONS.items():
         role = await get_role_by_name(db, role_name)
         if not role:
-            role = await create_role(
-                db, name=role_name, description=f"Default {role_name} role"
-            )
+            role = await create_role(db, name=role_name, description=f"Default {role_name} role")
             logger.info("Created role: %s", role_name)
 
         # Query existing permissions for this role

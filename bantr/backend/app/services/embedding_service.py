@@ -97,9 +97,7 @@ def chunk_transcript(transcript: Transcript) -> list[dict]:
     return chunks
 
 
-async def embed_transcript(
-    db: AsyncSession, debate: Debate, transcript: Transcript
-) -> None:
+async def embed_transcript(db: AsyncSession, debate: Debate, transcript: Transcript) -> None:
     chunks = chunk_transcript(transcript)
     if not chunks:
         return
@@ -162,14 +160,19 @@ async def embed_query(text: str) -> list[float]:
             )
             break
         except Exception:
-            logger.exception(
-                "OpenAI query embedding call failed on attempt %s", attempt + 1
-            )
+            logger.exception("OpenAI query embedding call failed on attempt %s", attempt + 1)
             if attempt == OPENAI_RETRIES - 1:
                 raise AppError(
                     "EMBEDDING_FAILED",
                     "Failed to embed chat query",
                     status_code=502,
                 )
+
+    if response is None:
+        raise AppError(
+            "EMBEDDING_FAILED",
+            "Failed to embed chat query",
+            status_code=502,
+        )
 
     return _normalize_embedding_vector(response.data[0].embedding)

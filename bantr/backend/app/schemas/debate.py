@@ -8,9 +8,11 @@ DebateStatus = Literal["pending", "starting", "active", "ending", "completed", "
 
 
 class DebateCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     title: str = Field(min_length=1, max_length=200)
-    topic: str = Field(min_length=1)
-    agent_prompt: str = Field(min_length=1)
+    topic: str = Field(min_length=1, max_length=2000)
+    agent_prompt: str = Field(min_length=1, max_length=4000)
     agent_voice_id: str = Field(min_length=1, max_length=100)
 
 

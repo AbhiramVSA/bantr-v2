@@ -10,7 +10,7 @@ class UserProfile(BaseModel):
     email: str
     username: str
     role: str | None = None
-    permissions: set[str] = set()
+    permissions: set[str] = Field(default_factory=set)
 
 
 class RegisterRequest(BaseModel):

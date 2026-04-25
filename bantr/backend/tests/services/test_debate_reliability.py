@@ -141,13 +141,9 @@ async def test_analysis_persists_even_if_embedding_fails(monkeypatch):
     async def fake_generate_output(_transcript_text: str):
         return analysis_output
 
-    monkeypatch.setattr(
-        analysis_service, "_generate_analysis_output", fake_generate_output
-    )
+    monkeypatch.setattr(analysis_service, "_generate_analysis_output", fake_generate_output)
     monkeypatch.setattr(analysis_service, "get_analysis_by_debate_id", fake_get_analysis)
-    monkeypatch.setattr(
-        analysis_service, "get_transcript_by_debate_id", fake_get_transcript
-    )
+    monkeypatch.setattr(analysis_service, "get_transcript_by_debate_id", fake_get_transcript)
     monkeypatch.setattr(analysis_service, "create_debate_analysis", fake_create_analysis)
     monkeypatch.setattr(analysis_service, "embed_transcript", fake_embed_transcript)
 

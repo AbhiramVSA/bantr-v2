@@ -134,23 +134,28 @@ Smoke/manual:
 
 Current configured gates:
 
-- Backend: `uv run pytest`
-- Frontend: `npm run build`
+- Backend tests: `cd bantr && uv run pytest`
+- Backend lint: `cd bantr && uv run ruff check backend`
+- Backend format check: `cd bantr && uv run ruff format --check backend`
+- Backend typecheck: `cd bantr && uv run pyright`
+- Frontend typecheck/build: `cd bantr/frontend && npm run build`
+- Frontend lint: `cd bantr/frontend && npm run lint`
+- Frontend unit/component tests: `cd bantr/frontend && npm run test:unit`
+- Frontend E2E smoke: `cd bantr/frontend && npm run test:e2e`
+- Docs lint: `cd bantr/frontend && npm run docs:lint`
 
-Current gaps:
+Backend typechecking is intentionally scoped to production backend modules and `backend/agent_worker.py`. Pytest files use `SimpleNamespace` and monkeypatch-based doubles that are verified by pytest instead of Pyright.
 
-- No backend formatter/linter is configured.
-- No backend static type checker is configured.
-- No frontend ESLint script is configured.
-- No frontend unit/component/E2E test command is configured.
+Tooling standards:
 
-When adding tooling, prefer repo-standard scripts and document them in `AGENTS.md`. Reasonable future additions are:
+- Ruff owns backend import sorting, linting, and formatting. Use `uv run ruff format backend` to apply formatting before the format check.
+- Pyright runs in basic mode to catch production-code typing issues without forcing broad third-party stub churn.
+- ESLint uses flat config with TypeScript and React Hooks rules.
+- Vitest and React Testing Library cover component/user-visible behavior.
+- Playwright covers critical browser smoke flows with isolated network mocks.
+- markdownlint validates shared Markdown docs through the `docs:lint` script.
 
-- Backend: Ruff for lint/format and pyright or mypy for type checking.
-- Frontend: ESLint with TypeScript/React rules and React Testing Library.
-- E2E: Playwright for auth, debate creation, live room join states, and analysis/chat flows.
-
-Do not claim unavailable gates passed.
+Do not claim skipped or environment-blocked gates passed.
 
 ## Documentation Standards
 
@@ -176,6 +181,11 @@ Use this as the definition of done:
 - Edge cases are covered by tests or documented manual verification.
 - Docs and runbooks reflect changed commands, env vars, migrations, or workflows.
 - `cd bantr && uv run pytest` passes for backend changes, or failures are explained.
+- `cd bantr && uv run ruff check backend` and `cd bantr && uv run ruff format --check backend` pass for backend Python changes.
+- `cd bantr && uv run pyright` passes for backend production-code typing changes.
 - `cd bantr/frontend && npm run build` passes for frontend changes, or failures are explained.
+- `cd bantr/frontend && npm run lint` and `cd bantr/frontend && npm run test:unit` pass for frontend behavior changes.
+- `cd bantr/frontend && npm run test:e2e` passes when browser workflow behavior changes.
+- `cd bantr/frontend && npm run docs:lint` passes when documentation changes.
 - Migration changes are verified with `cd bantr/backend && uv run alembic upgrade head`.
 - No unrelated dirty-tree changes are reverted or reformatted.

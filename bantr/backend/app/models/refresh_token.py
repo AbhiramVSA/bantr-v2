@@ -1,10 +1,14 @@
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class RefreshToken(Base):
@@ -22,6 +26,4 @@ class RefreshToken(Base):
 
     user: Mapped["User"] = relationship(back_populates="refresh_tokens")
 
-    __table_args__ = (
-        CheckConstraint("expires_at > created_at", name="ck_refresh_token_expiry"),
-    )
+    __table_args__ = (CheckConstraint("expires_at > created_at", name="ck_refresh_token_expiry"),)

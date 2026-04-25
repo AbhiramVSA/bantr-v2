@@ -1,6 +1,7 @@
 import uuid
+from typing import Annotated, cast
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
@@ -17,9 +18,9 @@ from app.schemas.analysis import AnalysisRead
 from app.schemas.debate import (
     DebateCreate,
     DebateEndResponse,
-    DebateStatus,
     DebateRead,
     DebateStartResponse,
+    DebateStatus,
 )
 from app.schemas.transcript import TranscriptRead
 from app.services.analysis_service import analyze_debate, schedule_embedding
@@ -49,8 +50,8 @@ async def create_debate_endpoint(
 @router.get("", response_model=list[DebateRead])
 async def list_debates(
     status: DebateStatus | None = None,
-    skip: int = 0,
-    limit: int = 20,
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -73,9 +74,7 @@ async def start_debate_endpoint(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    debate = _get_debate_or_404(
-        await get_user_debate_for_update(db, debate_id, user.id)
-    )
+    debate = _get_debate_or_404(await get_user_debate_for_update(db, debate_id, user.id))
     token, url = await start_debate(db, debate, user.id)
     await db.commit()
     return DebateStartResponse(
@@ -92,12 +91,10 @@ async def end_debate_endpoint(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    debate = _get_debate_or_404(
-        await get_user_debate_for_update(db, debate_id, user.id)
-    )
+    debate = _get_debate_or_404(await get_user_debate_for_update(db, debate_id, user.id))
     await end_debate(db, debate)
     await db.commit()
-    return DebateEndResponse(status=debate.status)
+    return DebateEndResponse(status=cast(DebateStatus, debate.status))
 
 
 @router.delete("/{debate_id}")
@@ -137,9 +134,7 @@ async def analyze_debate_endpoint(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    debate = _get_debate_or_404(
-        await get_user_debate_for_update(db, debate_id, user.id)
-    )
+    debate = _get_debate_or_404(await get_user_debate_for_update(db, debate_id, user.id))
     analysis = await analyze_debate(db, debate)
     await db.commit()
     schedule_embedding(debate.id)

@@ -5,7 +5,9 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class ChatRequest(BaseModel):
-    message: str = Field(min_length=1)
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    message: str = Field(min_length=1, max_length=4000)
 
 
 class ChatContextDebate(BaseModel):

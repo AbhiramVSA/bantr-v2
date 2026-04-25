@@ -93,9 +93,7 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def set_google_redirect_uri(self) -> "Settings":
         if not self.GOOGLE_REDIRECT_URI and self.MODE == "development":
-            self.GOOGLE_REDIRECT_URI = (
-                "http://localhost:8003/api/v1/auth/google/callback"
-            )
+            self.GOOGLE_REDIRECT_URI = "http://localhost:8003/api/v1/auth/google/callback"
         return self
 
     @model_validator(mode="after")
@@ -109,9 +107,7 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_session_cookie(self) -> "Settings":
         if self.SESSION_COOKIE_SAMESITE == "none" and not self.SESSION_COOKIE_SECURE:
-            raise ValueError(
-                "SESSION_COOKIE_SAMESITE=none requires SESSION_COOKIE_SECURE=true"
-            )
+            raise ValueError("SESSION_COOKIE_SAMESITE=none requires SESSION_COOKIE_SECURE=true")
         return self
 
     @model_validator(mode="after")
@@ -128,9 +124,7 @@ class Settings(BaseSettings):
         if not self.SESSION_COOKIE_SECURE:
             errors.append("SESSION_COOKIE_SECURE must be true in production")
         if self.SESSION_COOKIE_SAMESITE == "none" and not self.SESSION_COOKIE_SECURE:
-            errors.append(
-                "SESSION_COOKIE_SAMESITE=none requires SESSION_COOKIE_SECURE=true"
-            )
+            errors.append("SESSION_COOKIE_SAMESITE=none requires SESSION_COOKIE_SECURE=true")
         if errors:
             raise ValueError("Production configuration errors: " + "; ".join(errors))
         return self

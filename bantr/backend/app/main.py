@@ -1,15 +1,15 @@
-import logging
 import asyncio
+import logging
 import socket
 from contextlib import asynccontextmanager
 
+from asyncpg import UniqueViolationError
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from asyncpg import UniqueViolationError
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -87,9 +87,7 @@ app = FastAPI(
 if settings.LOGFIRE_TOKEN:
     import logfire
 
-    logfire.configure(
-        token=settings.LOGFIRE_TOKEN, environment=settings.LOGFIRE_ENVIRONMENT
-    )
+    logfire.configure(token=settings.LOGFIRE_TOKEN, environment=settings.LOGFIRE_ENVIRONMENT)
     logfire.instrument_fastapi(app)
     logfire.instrument_asyncpg()
 
@@ -113,7 +111,8 @@ async def app_error_handler(request: Request, exc: AppError):
 
 @app.exception_handler(IntegrityError)
 async def db_integrity_handler(request: Request, exc: IntegrityError):
-    if isinstance(exc.orig.__cause__, UniqueViolationError):
+    cause = getattr(exc.orig, "__cause__", None)
+    if isinstance(cause, UniqueViolationError):
         return JSONResponse(
             status_code=409,
             content={
@@ -202,7 +201,7 @@ async def unhandled_error_handler(request: Request, exc: Exception):
 from app.api.v1.routers.auth import limiter
 
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 app.add_middleware(SlowAPIMiddleware)
 
 
@@ -262,9 +261,7 @@ async def security_headers(request: Request, call_next):
     response.headers["X-XSS-Protection"] = "0"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     if settings.MODE == "production":
-        response.headers["Strict-Transport-Security"] = (
-            "max-age=31536000; includeSubDomains"
-        )
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
 
@@ -323,7 +320,7 @@ async def integration_readiness():
     if checks["livekit_env"] == "ok":
         api = None
         try:
-            from livekit.api import LiveKitAPI, ListRoomsRequest
+            from livekit.api import ListRoomsRequest, LiveKitAPI
 
             api = LiveKitAPI(
                 url=settings.LIVEKIT_URL,

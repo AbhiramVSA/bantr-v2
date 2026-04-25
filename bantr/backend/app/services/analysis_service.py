@@ -71,9 +71,7 @@ async def _embed_transcript_async(debate_id: uuid.UUID) -> None:
             await session.commit()
         except AppError:
             await session.rollback()
-            logger.exception(
-                "Embedding failed after analysis persistence for debate %s", debate_id
-            )
+            logger.exception("Embedding failed after analysis persistence for debate %s", debate_id)
         except Exception:
             await session.rollback()
             logger.exception(
@@ -88,9 +86,7 @@ def schedule_embedding(debate_id: uuid.UUID) -> None:
     task.add_done_callback(_embedding_tasks.discard)
 
 
-async def analyze_debate(
-    db: AsyncSession, debate: Debate
-) -> DebateAnalysis:
+async def analyze_debate(db: AsyncSession, debate: Debate) -> DebateAnalysis:
     if debate.status != "completed":
         raise AppError(
             "DEBATE_NOT_COMPLETED",

@@ -1,7 +1,7 @@
 import logging
 
-from fastapi import APIRouter, Depends, Request, Response
 from authlib.integrations.base_client.errors import MismatchingStateError
+from fastapi import APIRouter, Depends, Request, Response
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy.exc import IntegrityError
@@ -104,9 +104,7 @@ async def register(
     response: Response,
     db: AsyncSession = Depends(get_db),
 ):
-    user = await register_user(
-        db, email=body.email, username=body.username, password=body.password
-    )
+    user = await register_user(db, email=body.email, username=body.username, password=body.password)
     await issue_user_tokens(db, user, request, response, event="register")
     await db.commit()
     return {"status": "registered", "user_id": str(user.id)}

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageContainer } from "../components/layout/PageContainer";
 import { Button } from "../components/ui/Button";
@@ -15,10 +15,15 @@ export function CreateDebate() {
   const [agentPrompt, setAgentPrompt] = useState("");
   const [agentVoiceId, setAgentVoiceId] = useState("demo-voice");
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [error, setError] = useState("");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submittingRef.current) {
+      return;
+    }
+    submittingRef.current = true;
     setSubmitting(true);
     setError("");
     try {
@@ -32,6 +37,7 @@ export function CreateDebate() {
     } catch (issue) {
       setError(issue instanceof ApiError ? issue.message : "Unable to create debate.");
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   }
@@ -49,31 +55,37 @@ export function CreateDebate() {
         <form className="mt-6 grid gap-8 lg:grid-cols-2" onSubmit={handleSubmit}>
           <div className="space-y-6">
             <div>
-              <label className="mb-3 block text-xs font-black uppercase tracking-[0.2em] text-on-surface-variant">Title</label>
-              <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Universal Basic Income Finals" />
+              <label htmlFor="debate-title" className="mb-3 block text-xs font-black uppercase tracking-[0.2em] text-on-surface-variant">Title</label>
+              <Input id="debate-title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Universal Basic Income Finals" maxLength={200} required />
             </div>
             <div>
-              <label className="mb-3 block text-xs font-black uppercase tracking-[0.2em] text-on-surface-variant">Agent Voice ID</label>
-              <Input value={agentVoiceId} onChange={(event) => setAgentVoiceId(event.target.value)} placeholder="demo-voice" />
+              <label htmlFor="agent-voice-id" className="mb-3 block text-xs font-black uppercase tracking-[0.2em] text-on-surface-variant">Agent Voice ID</label>
+              <Input id="agent-voice-id" value={agentVoiceId} onChange={(event) => setAgentVoiceId(event.target.value)} placeholder="demo-voice" maxLength={100} required />
             </div>
           </div>
           <div className="space-y-6">
             <div>
-              <label className="mb-3 block text-xs font-black uppercase tracking-[0.2em] text-on-surface-variant">Topic</label>
+              <label htmlFor="debate-topic" className="mb-3 block text-xs font-black uppercase tracking-[0.2em] text-on-surface-variant">Topic</label>
               <textarea
+                id="debate-topic"
                 value={topic}
                 onChange={(event) => setTopic(event.target.value)}
                 className="min-h-[140px] w-full rounded-[1.5rem] border-none bg-surface-container-low p-5 text-on-background outline-none"
+                maxLength={2000}
                 placeholder="Describe the debate topic, resolution, and ground rules."
+                required
               />
             </div>
             <div>
-              <label className="mb-3 block text-xs font-black uppercase tracking-[0.2em] text-on-surface-variant">Agent Prompt</label>
+              <label htmlFor="agent-prompt" className="mb-3 block text-xs font-black uppercase tracking-[0.2em] text-on-surface-variant">Agent Prompt</label>
               <textarea
+                id="agent-prompt"
                 value={agentPrompt}
                 onChange={(event) => setAgentPrompt(event.target.value)}
                 className="min-h-[180px] w-full rounded-[1.5rem] border-none bg-surface-container-low p-5 text-on-background outline-none"
+                maxLength={4000}
                 placeholder="Give Bantr Coach the role, tone, and rhetorical style to argue with."
+                required
               />
             </div>
           </div>

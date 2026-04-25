@@ -30,19 +30,13 @@ async def create_debate(
     return debate
 
 
-async def get_debate_by_id(
-    db: AsyncSession, debate_id: uuid.UUID
-) -> Debate | None:
+async def get_debate_by_id(db: AsyncSession, debate_id: uuid.UUID) -> Debate | None:
     result = await db.execute(select(Debate).where(Debate.id == debate_id))
     return result.scalars().first()
 
 
-async def get_debate_by_id_for_update(
-    db: AsyncSession, debate_id: uuid.UUID
-) -> Debate | None:
-    result = await db.execute(
-        select(Debate).where(Debate.id == debate_id).with_for_update()
-    )
+async def get_debate_by_id_for_update(db: AsyncSession, debate_id: uuid.UUID) -> Debate | None:
+    result = await db.execute(select(Debate).where(Debate.id == debate_id).with_for_update())
     return result.scalars().first()
 
 
@@ -59,9 +53,7 @@ async def get_user_debate_for_update(
     db: AsyncSession, debate_id: uuid.UUID, user_id: uuid.UUID
 ) -> Debate | None:
     result = await db.execute(
-        select(Debate)
-        .where(Debate.id == debate_id, Debate.user_id == user_id)
-        .with_for_update()
+        select(Debate).where(Debate.id == debate_id, Debate.user_id == user_id).with_for_update()
     )
     return result.scalars().first()
 

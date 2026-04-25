@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import uuid
+from typing import TypedDict
 
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIChatModel
@@ -21,6 +22,12 @@ logger = logging.getLogger(__name__)
 
 CHAT_TIMEOUT_SECONDS = 60
 CHAT_RETRIES = 2
+
+
+class ContextDebate(TypedDict):
+    id: str
+    title: str
+
 
 _chat_model_name = settings.OPENAI_SIMPLE_MODEL.removeprefix("openai:")
 chat_agent = Agent(
@@ -76,7 +83,7 @@ async def _generate_chat_response(
 
 async def handle_chat_message(
     db: AsyncSession, user_id: uuid.UUID, message: str
-) -> tuple[ChatMessage, list[dict]]:
+) -> tuple[ChatMessage, list[ContextDebate]]:
     query_embedding = await embed_query(message)
     similar = await search_similar_embeddings(db, user_id, query_embedding, limit=5)
 
@@ -92,9 +99,7 @@ async def handle_chat_message(
         context_parts.append(f"[From debate: {debate.title}]\n{emb.chunk_text}")
 
     context_text = (
-        "\n\n---\n\n".join(context_parts)
-        if context_parts
-        else "No relevant debate history found."
+        "\n\n---\n\n".join(context_parts) if context_parts else "No relevant debate history found."
     )
 
     recent = await get_recent_chat_messages(db, user_id, limit=10)
@@ -121,7 +126,7 @@ async def handle_chat_message(
         context_debate_ids=context_ids,
     )
 
-    context_debates = [
+    context_debates: list[ContextDebate] = [
         {"id": did, "title": title} for did, title in debate_ids_seen.items()
     ]
     return assistant_msg, context_debates

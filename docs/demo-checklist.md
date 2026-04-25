@@ -53,3 +53,19 @@ Optional variables:
 - `DEMO_USER_USERNAME`
 - `DEMO_USER_PASSWORD`
 - `DEMO_AGENT_VOICE_ID`
+
+## Local Quality Gates
+
+Before a demo branch is considered ready, run:
+
+- `cd bantr && uv run pytest`
+- `cd bantr && uv run ruff check backend`
+- `cd bantr && uv run ruff format --check backend`
+- `cd bantr && uv run pyright`
+- `cd bantr/frontend && npm run build`
+- `cd bantr/frontend && npm run lint`
+- `cd bantr/frontend && npm run test:unit`
+- `cd bantr/frontend && npm run test:e2e`
+- `cd bantr/frontend && npm run docs:lint`
+
+Expected outcome: every command exits with code 0. The Playwright command uses mocked API responses for the create-debate browser smoke path and does not require LiveKit or OpenAI.

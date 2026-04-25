@@ -25,10 +25,6 @@ async def create_transcript(
     return transcript
 
 
-async def get_transcript_by_debate_id(
-    db: AsyncSession, debate_id: uuid.UUID
-) -> Transcript | None:
-    result = await db.execute(
-        select(Transcript).where(Transcript.debate_id == debate_id)
-    )
+async def get_transcript_by_debate_id(db: AsyncSession, debate_id: uuid.UUID) -> Transcript | None:
+    result = await db.execute(select(Transcript).where(Transcript.debate_id == debate_id))
     return result.scalars().first()

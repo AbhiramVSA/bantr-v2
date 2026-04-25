@@ -31,3 +31,7 @@ Thumbs.db
 .pytest_cache/
 htmlcov/
 .coverage
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+frontend/*.tsbuildinfo

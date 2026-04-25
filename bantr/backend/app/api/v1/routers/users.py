@@ -1,6 +1,7 @@
 import uuid
+from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, require_permissions
@@ -14,8 +15,8 @@ router = APIRouter()
 
 @router.get("", response_model=list[UserRead])
 async def get_users(
-    skip: int = 0,
-    limit: int = 20,
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
     user: User = require_permissions("users:read"),
     db: AsyncSession = Depends(get_db),
 ):

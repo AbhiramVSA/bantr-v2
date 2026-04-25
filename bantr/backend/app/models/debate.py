@@ -1,10 +1,17 @@
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
+
+if TYPE_CHECKING:
+    from app.models.debate_analysis import DebateAnalysis
+    from app.models.debate_embedding import DebateEmbedding
+    from app.models.transcript import Transcript
+    from app.models.user import User
 
 
 class Debate(Base):

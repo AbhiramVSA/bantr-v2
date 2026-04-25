@@ -1,11 +1,12 @@
 import asyncio
+import pathlib
 import ssl
 import sys
-import pathlib
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy.ext.asyncio import create_async_engine
+
+from alembic import context
 
 # Add backend/ to path so 'app' is importable
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))

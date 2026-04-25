@@ -55,10 +55,7 @@ def poll_transcript(
         if transcript_res.status_code == 200:
             return transcript_res.json()
         if transcript_res.status_code not in (404,):
-            fail(
-                f"transcript poll failed: {transcript_res.status_code} "
-                f"{transcript_res.text}"
-            )
+            fail(f"transcript poll failed: {transcript_res.status_code} {transcript_res.text}")
         time.sleep(2)
     fail("transcript was not available before timeout")
 
@@ -96,9 +93,7 @@ def main() -> None:
         get_res = client.get(f"{base_url}/debates/{debate_id}")
         assert_status(get_res, 200, "get debate")
 
-        start_res = client.post(
-            f"{base_url}/debates/{debate_id}/start", headers=headers
-        )
+        start_res = client.post(f"{base_url}/debates/{debate_id}/start", headers=headers)
         assert_status(start_res, 200, "start debate")
         start_payload = start_res.json()
         if not start_payload.get("livekit_token"):

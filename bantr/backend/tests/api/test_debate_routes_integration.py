@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
@@ -26,6 +27,19 @@ def _build_test_app() -> FastAPI:
                     "code": exc.code,
                     "message": exc.message,
                     "details": exc.details,
+                }
+            },
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error_handler(_request, exc: RequestValidationError):
+        return JSONResponse(
+            status_code=422,
+            content={
+                "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Invalid request",
+                    "details": exc.errors(),
                 }
             },
         )
@@ -173,3 +187,30 @@ def test_delete_rejects_non_terminal_debate(monkeypatch):
         res = client.delete(f"{settings.API_V1_STR}/debates/{debate_id}")
         assert res.status_code == 409
         assert res.json()["error"]["code"] == "DEBATE_NOT_TERMINAL"
+
+
+def test_list_debates_rejects_invalid_pagination():
+    app = _build_test_app()
+    user = SimpleNamespace(id=uuid.uuid4())
+
+    async def fake_get_db():
+        yield SimpleNamespace()
+
+    async def fake_get_current_user():
+        return user
+
+    async def fake_validate_csrf():
+        return None
+
+    app.dependency_overrides[get_db] = fake_get_db
+    app.dependency_overrides[get_current_user] = fake_get_current_user
+    app.dependency_overrides[validate_csrf] = fake_validate_csrf
+
+    with TestClient(app) as client:
+        negative_skip = client.get(f"{settings.API_V1_STR}/debates?skip=-1")
+        oversized_limit = client.get(f"{settings.API_V1_STR}/debates?limit=101")
+
+    assert negative_skip.status_code == 422
+    assert negative_skip.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert oversized_limit.status_code == 422
+    assert oversized_limit.json()["error"]["code"] == "VALIDATION_ERROR"

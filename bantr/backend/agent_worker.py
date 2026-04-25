@@ -3,10 +3,11 @@ import json
 import logging
 import math
 import os
+import ssl as _ssl
 import sys
 import uuid
+from collections.abc import Iterable
 from contextlib import asynccontextmanager
-import ssl as _ssl
 
 from dotenv import load_dotenv
 from livekit import rtc
@@ -60,6 +61,7 @@ if settings.DATABASE_HOST not in ("localhost", "127.0.0.1"):
     _worker_connect_args["statement_cache_size"] = 0
     _worker_connect_args["prepared_statement_cache_size"] = 0
 
+
 @asynccontextmanager
 async def _worker_db_session():
     """Create a loop-local DB session to avoid cross-loop asyncpg pool reuse in worker jobs."""
@@ -80,6 +82,7 @@ async def _worker_db_session():
             yield session
     finally:
         await engine.dispose()
+
 
 async def _on_job_request(job_request: JobRequest) -> None:
     logger.info(
@@ -430,11 +433,14 @@ async def _save_transcript(debate_id: str, session: AgentSession):
             await _mark_debate_terminal(did, status="failed")
 
 
-def _iter_chat_messages(session: AgentSession):
+def _iter_chat_messages(session: AgentSession) -> list[object]:
     history = session.history
     maybe_messages = getattr(history, "messages", None)
     if callable(maybe_messages):
-        return maybe_messages()
+        messages = maybe_messages()
+        if isinstance(messages, Iterable) and not isinstance(messages, (str, bytes)):
+            return list(messages)
+        return []
     if isinstance(maybe_messages, list):
         return maybe_messages
     return []
@@ -454,9 +460,7 @@ async def _mark_debate_terminal(debate_id: uuid.UUID, status: str) -> None:
             await db.flush()
             await db.commit()
     except Exception:
-        logger.exception(
-            "Failed to set terminal status '%s' for debate %s", status, debate_id
-        )
+        logger.exception("Failed to set terminal status '%s' for debate %s", status, debate_id)
 
 
 def _validate_worker_env() -> None:

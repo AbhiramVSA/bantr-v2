@@ -105,20 +105,13 @@ async def reconcile_stale_debates(
             reference_time = getattr(debate, "started_at", None) or getattr(
                 debate, "updated_at", None
             )
-            exceeded_active_max = (
-                reference_time is None or reference_time < active_cutoff
-            )
-            exceeded_empty_room = (
-                reference_time is None or reference_time < empty_room_cutoff
-            )
+            exceeded_active_max = reference_time is None or reference_time < active_cutoff
+            exceeded_empty_room = reference_time is None or reference_time < empty_room_cutoff
 
             should_end = (
                 not room_state["room_exists"]
                 or exceeded_active_max
-                or (
-                    exceeded_empty_room
-                    and not room_state["has_human_participant"]
-                )
+                or (exceeded_empty_room and not room_state["has_human_participant"])
             )
 
             if not should_end:

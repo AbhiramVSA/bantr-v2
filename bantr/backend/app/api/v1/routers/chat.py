@@ -1,6 +1,7 @@
 import uuid
+from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
@@ -33,16 +34,15 @@ async def send_chat_message(
             created_at=assistant_msg.created_at,
         ),
         context_debates=[
-            ChatContextDebate(id=uuid.UUID(d["id"]), title=d["title"])
-            for d in context_debates
+            ChatContextDebate(id=uuid.UUID(d["id"]), title=d["title"]) for d in context_debates
         ],
     )
 
 
 @router.get("/history", response_model=list[ChatMessageRead])
 async def get_chat_history(
-    skip: int = 0,
-    limit: int = 50,
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):

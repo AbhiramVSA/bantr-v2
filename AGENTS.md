@@ -98,11 +98,16 @@ Backend tests live under `bantr/backend/tests`. Follow existing pytest naming an
 Run from the indicated directories when the touched area is relevant:
 
 - Backend tests: `cd bantr && uv run pytest`
+- Backend lint: `cd bantr && uv run ruff check backend`
+- Backend format check: `cd bantr && uv run ruff format --check backend`
+- Backend typecheck: `cd bantr && uv run pyright` (checks production backend code and `backend/agent_worker.py`)
 - Frontend typecheck/build: `cd bantr/frontend && npm run build`
+- Frontend lint: `cd bantr/frontend && npm run lint`
+- Frontend unit/component tests: `cd bantr/frontend && npm run test:unit`
+- Frontend E2E smoke: `cd bantr/frontend && npm run test:e2e`
+- Docs lint: `cd bantr/frontend && npm run docs:lint`
 - Backend migrations: `cd bantr/backend && uv run alembic upgrade head` when migrations change.
 - Demo smoke test: `cd bantr/backend && uv run python scripts/demo_smoke_test.py` when API, auth, debate lifecycle, LiveKit, analysis, or chat flows change and the required services are available.
-
-There is currently no backend lint, backend typecheck, frontend lint, unit frontend test, or Playwright command configured. Do not claim these passed. If you add tooling, add package scripts and document the command here.
 
 ## Definition Of Done
 

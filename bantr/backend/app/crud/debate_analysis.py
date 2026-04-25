@@ -38,7 +38,5 @@ async def create_debate_analysis(
 async def get_analysis_by_debate_id(
     db: AsyncSession, debate_id: uuid.UUID
 ) -> DebateAnalysis | None:
-    result = await db.execute(
-        select(DebateAnalysis).where(DebateAnalysis.debate_id == debate_id)
-    )
+    result = await db.execute(select(DebateAnalysis).where(DebateAnalysis.debate_id == debate_id))
     return result.scalars().first()

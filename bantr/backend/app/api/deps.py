@@ -6,7 +6,6 @@ import jwt
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.core.errors import AuthError, ForbiddenError
 from app.core.security import decode_access_token
 from app.crud.permission import get_user_permission_names
@@ -15,9 +14,7 @@ from app.db.session import get_db
 from app.models.user import User
 
 
-async def get_current_user(
-    request: Request, db: AsyncSession = Depends(get_db)
-) -> User:
+async def get_current_user(request: Request, db: AsyncSession = Depends(get_db)) -> User:
     token = request.cookies.get("access_token")
     if not token:
         raise AuthError("NOT_AUTHENTICATED", "No access token provided")
@@ -47,9 +44,7 @@ def require_permissions(*required: str):
         user_perms = await get_user_permission_names(db, user.id)
         missing = set(required) - user_perms
         if missing:
-            raise ForbiddenError(
-                "INSUFFICIENT_PERMISSIONS", f"Missing permissions: {missing}"
-            )
+            raise ForbiddenError("INSUFFICIENT_PERMISSIONS", f"Missing permissions: {missing}")
         return user
 
     return Depends(check)

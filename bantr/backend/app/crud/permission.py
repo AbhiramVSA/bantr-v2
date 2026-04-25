@@ -24,9 +24,7 @@ async def create_permission(
     return permission
 
 
-async def get_user_permission_names(
-    db: AsyncSession, user_id: uuid.UUID
-) -> set[str]:
+async def get_user_permission_names(db: AsyncSession, user_id: uuid.UUID) -> set[str]:
     result = await db.execute(
         select(Permission.name)
         .join(role_permissions, Permission.id == role_permissions.c.permission_id)

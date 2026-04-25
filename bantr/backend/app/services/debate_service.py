@@ -28,9 +28,7 @@ END_IDEMPOTENT_STATUSES = {"ending", "completed", "failed"}
 RECOVERABLE_START_STATUSES = {"pending", "starting", "active"}
 
 
-async def create_new_debate(
-    db: AsyncSession, user_id: uuid.UUID, data: DebateCreate
-) -> Debate:
+async def create_new_debate(db: AsyncSession, user_id: uuid.UUID, data: DebateCreate) -> Debate:
     return await create_debate(
         db,
         user_id=user_id,
@@ -42,9 +40,7 @@ async def create_new_debate(
     )
 
 
-async def start_debate(
-    db: AsyncSession, debate: Debate, user_id: uuid.UUID
-) -> tuple[str, str]:
+async def start_debate(db: AsyncSession, debate: Debate, user_id: uuid.UUID) -> tuple[str, str]:
     if debate.status not in RECOVERABLE_START_STATUSES:
         raise ConflictError(
             "INVALID_STATUS",
@@ -65,9 +61,7 @@ async def start_debate(
                 else False
             )
             if room_exists and dispatch_exists:
-                token = _generate_participant_token(
-                    debate.livekit_room_name, str(user_id), "user"
-                )
+                token = _generate_participant_token(debate.livekit_room_name, str(user_id), "user")
                 return token, settings.LIVEKIT_URL
 
             logger.warning(
@@ -105,9 +99,7 @@ async def end_debate(db: AsyncSession, debate: Debate) -> None:
         return
 
     if debate.status != "active":
-        raise ConflictError(
-            "INVALID_STATUS", f"Debate is '{debate.status}', expected 'active'"
-        )
+        raise ConflictError("INVALID_STATUS", f"Debate is '{debate.status}', expected 'active'")
 
     # Transition first to avoid a race where worker persists transcript before
     # status is updated, leaving debates stuck in "ending".
@@ -147,9 +139,7 @@ def generate_join_token(room_name: str, user_id: str) -> str:
     return _generate_participant_token(room_name, user_id, "user")
 
 
-def _generate_participant_token(
-    room_name: str, identity: str, name: str
-) -> str:
+def _generate_participant_token(room_name: str, identity: str, name: str) -> str:
     token = (
         AccessToken(
             api_key=settings.LIVEKIT_API_KEY,
@@ -208,9 +198,7 @@ async def _room_exists(api: LiveKitAPI, room_name: str) -> bool:
     return any(room.name == room_name for room in rooms.rooms)
 
 
-async def _dispatch_exists(
-    api: LiveKitAPI, room_name: str, agent_name: str
-) -> bool:
+async def _dispatch_exists(api: LiveKitAPI, room_name: str, agent_name: str) -> bool:
     dispatches = await api.agent_dispatch.list_dispatch(room_name)
     return any(getattr(dispatch, "agent_name", None) == agent_name for dispatch in dispatches)
 

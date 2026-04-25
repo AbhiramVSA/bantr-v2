@@ -14,9 +14,7 @@ async def list_roles(db: AsyncSession) -> list[Role]:
     return list(result.scalars().all())
 
 
-async def create_role(
-    db: AsyncSession, *, name: str, description: str | None = None
-) -> Role:
+async def create_role(db: AsyncSession, *, name: str, description: str | None = None) -> Role:
     role = Role(name=name, description=description)
     db.add(role)
     await db.flush()
