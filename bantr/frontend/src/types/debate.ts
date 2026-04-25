@@ -42,8 +42,15 @@ export type Transcript = {
   id: string;
   debate_id: string;
   full_text: string;
-  speaker_segments: Array<Record<string, unknown>>;
+  speaker_segments: TranscriptSpeakerSegment[];
   created_at: string;
+};
+
+export type TranscriptSpeakerSegment = {
+  speaker?: "user" | "agent" | string;
+  text?: string;
+  start_time?: number;
+  end_time?: number;
 };
 
 export type Analysis = {

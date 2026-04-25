@@ -2,6 +2,7 @@ import { Navigate, Link } from "react-router-dom";
 import { PageContainer } from "../components/layout/PageContainer";
 import { useAuth } from "../hooks/useAuth";
 import { Spinner } from "../components/ui/Spinner";
+import alexProfile from "../assets/alex-profile.svg";
 
 export function Landing() {
   const { status, isAuthenticated } = useAuth();
@@ -94,7 +95,7 @@ export function Landing() {
                       <img
                         alt="Debater Profile"
                         className="w-full h-full object-cover"
-                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvNGWqv173GkV9QGMVo2kroTxk2WePY79QNKC6nVIDFa8jWY6rYiBKAqsj2Ln0a470KBMYni8kBbsR11m0dTnLernmItzBvHpGKbf7rKHxwLVN7Ryeml5C016fXRXmi6xtLYlUux84lS2eS5J0-hd3Wq5rc9Fp5ZpVxVcJgw4MqxXVoL3DrcZLGTCZHR2F55PCEi8vmQW_6wMLZ9or9h8ydtHyyKhXtjlpJWz4Eu9nJab17ORbWfdROY8BHFMpQ7WrtTgq3Zc"
+                        src={alexProfile}
                       />
                     </div>
                     <div>

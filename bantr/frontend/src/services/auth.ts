@@ -1,9 +1,6 @@
 import type { LoginPayload, RegisterPayload, UserProfile } from "../types/auth";
 import { apiRequest } from "./api";
-
-const API_ROOT =
-  import.meta.env.VITE_API_BASE_URL ??
-  (import.meta.env.DEV ? "http://localhost:8000/api/v1" : "/api/v1");
+import { API_BASE_URL } from "./config";
 
 type AuthPayload = {
   id: string;
@@ -78,5 +75,5 @@ export async function refreshSession() {
 }
 
 export function getGoogleLoginUrl() {
-  return `${API_ROOT}/auth/google/login`;
+  return `${API_BASE_URL}/auth/google/login`;
 }
