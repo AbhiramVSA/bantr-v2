@@ -1,11 +1,20 @@
 <h1 align="center">
-  <img src="assets/bantr-v2-mark.png" alt="Two overlapping teal and amber speech bubbles" width="200">
+  <img src="assets/bantr-v2-mark.png" alt="Two speech bubbles face each other, one teal and one amber" width="200">
   Bantr v2
 </h1>
 
 <h4 align="center">A proof of concept for voice debates, transcripts, analysis, and contextual chat.</h4>
 
-<p align="center"><strong>Python 3.12+</strong> · <strong>FastAPI</strong> · <strong>React 18</strong> · <strong>Vite</strong></p>
+<p align="center">
+  <a href="https://github.com/AbhiramVSA/bantr-v2/blob/bdef51ebfba6b082e4c46d99ac0dfe4301a74db2/bantr/pyproject.toml"><img src="https://img.shields.io/badge/Python-3.12%2B-3776AB?style=flat-square&amp;logo=python&amp;logoColor=white" alt="Python 3.12 or newer, from pyproject.toml"></a>
+  <a href="https://github.com/AbhiramVSA/bantr-v2/blob/bdef51ebfba6b082e4c46d99ac0dfe4301a74db2/bantr/pyproject.toml"><img src="https://img.shields.io/badge/FastAPI-API-009688?style=flat-square&amp;logo=fastapi&amp;logoColor=white" alt="FastAPI backend, from pyproject.toml"></a>
+  <a href="https://github.com/AbhiramVSA/bantr-v2/blob/bdef51ebfba6b082e4c46d99ac0dfe4301a74db2/bantr/frontend/package.json"><img src="https://img.shields.io/badge/React-18-61DAFB?style=flat-square&amp;logo=react&amp;logoColor=black" alt="React 18 frontend, from package.json"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/AbhiramVSA/bantr-v2/blob/bdef51ebfba6b082e4c46d99ac0dfe4301a74db2/bantr/frontend/package.json"><img src="https://img.shields.io/badge/Vite-6-646CFF?style=flat-square&amp;logo=vite&amp;logoColor=white" alt="Vite 6 frontend, from package.json"></a>
+  <a href="https://github.com/AbhiramVSA/bantr-v2/blob/bdef51ebfba6b082e4c46d99ac0dfe4301a74db2/bantr/compose.yml"><img src="https://img.shields.io/badge/PostgreSQL-16%20%2B%20pgvector-4169E1?style=flat-square&amp;logo=postgresql&amp;logoColor=white" alt="PostgreSQL 16 with pgvector, from compose.yml"></a>
+</p>
 
 <p align="center"><a href="#key-features">Key Features</a> · <a href="#architecture">Architecture</a> · <a href="#how-to-use">How to Use</a></p>
 
