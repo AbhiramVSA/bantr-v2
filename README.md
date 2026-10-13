@@ -13,9 +13,9 @@
 
 <p align="center"><a href="#documentation">Documentation</a></p>
 
-No verified app screenshot is available for this source snapshot.
+The source tree has no screenshot from a local demo.
 
-Bantr is a single-user proof of concept for voice debates. The design describes an AI debate opponent, saved transcripts, post-debate analysis, and chat that uses past debate context.
+Bantr is a single-user proof of concept for voice debates. The design describes an AI debate opponent, saved transcripts, post-debate analysis, and chat that uses debate data.
 
 ## Key Features
 
@@ -24,7 +24,7 @@ The source tree includes:
 - Routes to create, start, end, list, and review debate sessions.
 - A LiveKit agent worker and frontend pages for debate rooms.
 - Transcript and analysis models, services, routes, and pages.
-- Chat routes and a page for responses that use past debate context.
+- Chat routes and a page for responses that use debate data.
 - Authentication routes and role-based permission checks.
 
 ## Architecture
@@ -38,7 +38,7 @@ The design describes a proof of concept for one user. This README makes no produ
 
 ## How to Use
 
-The tracked source tree has no `generate.py` file. [SETUP.md](SETUP.md) starts with `python generate.py my-project`. The full setup path is not verified for this source snapshot.
+[SETUP.md](SETUP.md) starts with `python generate.py my-project`, but the tracked source tree has no `generate.py` file.
 
 These commands follow the tracked setup guide, package files, and project layout. We did not run them for this README.
 
