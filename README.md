@@ -54,6 +54,13 @@ Open `http://localhost:5173`. The Vite server proxies `/api` and `/health` to `h
 
 The Compose file starts PostgreSQL only. It does not start the API, client, or LiveKit services. The API can start without provider credentials, but Google sign-in, live voice sessions, and model-backed analysis/chat need their corresponding services and credentials.
 
+For live voice sessions, start the LiveKit worker in a third terminal after configuring its required provider values in `bantr/.env`: `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `OPENAI_API_KEY`, `DEEPGRAM_API_KEY`, and `ELEVENLABS_API_KEY`. Run the worker with this command:
+
+```sh
+cd bantr/backend
+uv run python agent_worker.py start
+```
+
 ## Configuration
 
 - Backend settings use [`bantr/.env.example`](bantr/.env.example). It lists database, Google OAuth, LiveKit, OpenAI, and application settings.
