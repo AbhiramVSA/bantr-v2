@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/bantr-v2-mark.svg" alt="Bantr debate mark" width="104">
+  <img src="assets/bantr-v2-logo.png" alt="Two speakers facing a central microphone waveform" width="200">
 </p>
 
 <h1 align="center">Bantr</h1>
