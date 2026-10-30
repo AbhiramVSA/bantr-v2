@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Bantr debate mark</title>
+  <desc id="desc">Two overlapping speech panels with a shared sound wave.</desc>
+  <rect x="12" y="18" width="73" height="62" rx="19" fill="#172554"/>
+  <path d="m27 78-7 20 24-18" fill="#172554"/>
+  <rect x="43" y="47" width="73" height="62" rx="19" fill="#27b8a5"/>
+  <path d="m101 107 7 14-20-12" fill="#27b8a5"/>
+  <path d="M61 80v-5m10 13V67m10 24V72m10 18v-8" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="6"/>
+</svg>
